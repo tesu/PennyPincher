@@ -11,10 +11,10 @@ namespace PennyHelper
     {
         public string Name => "Penny Helper";
 
-        private const string toggleName = "/penny";
-        private const string alwaysOnName = "/pennyalwayson";
-        private const string deltaName = "/pennydelta";
-        private const string verboseName = "/pennyverbose";
+        private const string commandName = "/penny";
+        private const string alwaysOnName = "alwayson";
+        private const string deltaName = "delta";
+        private const string verboseName = "verbose";
 
         private DalamudPluginInterface pi;
         private Configuration configuration;
@@ -33,27 +33,19 @@ namespace PennyHelper
             this.lastItem = 0;
             this.lastPrice = 0;
 
-            this.pi.CommandManager.AddHandler(toggleName, new CommandInfo(OnToggle)
+            this.pi.CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
             {
-                HelpMessage = "Toggles Penny Helper mode."
-            });
-
-            this.pi.CommandManager.AddHandler(alwaysOnName, new CommandInfo(OnAlwaysOn)
-            {
-                HelpMessage = "Toggles Penny Helper always on setting (default: false)."
-            });
-
-            this.pi.CommandManager.AddHandler(deltaName, new CommandInfo(OnDelta)
-            {
-                HelpMessage = "Sets Penny Helper delta setting (default: 1). Usage: /pennydelta <delta>"
-            });
-
-            this.pi.CommandManager.AddHandler(verboseName, new CommandInfo(OnVerbose)
-            {
-                HelpMessage = "Toggles Penny Helper verbose setting (default: true)."
+                HelpMessage = "Toggles Penny Helper mode. /penny help for additional options"
             });
 
             this.pi.Framework.Network.OnNetworkMessage += OnNetworkEvent;
+        }
+
+        public void Dispose()
+        {
+            this.pi.Framework.Network.OnNetworkMessage -= OnNetworkEvent;
+            this.pi.CommandManager.RemoveHandler(commandName);
+            this.pi.Dispose();
         }
 
         private void PrintSetting(string name, bool setting)
@@ -61,53 +53,61 @@ namespace PennyHelper
             this.pi.Framework.Gui.Chat.Print(name + (setting ? " enabled." : " disabled."));
         }
 
-        public void Dispose()
+        private void OnCommand(string command, string args)
         {
-            this.pi.Framework.Network.OnNetworkMessage -= OnNetworkEvent;
-            this.pi.CommandManager.RemoveHandler(toggleName);
-            this.pi.CommandManager.RemoveHandler(alwaysOnName);
-            this.pi.CommandManager.RemoveHandler(deltaName);
-            this.pi.CommandManager.RemoveHandler(verboseName);
-            this.pi.Dispose();
-        }
-
-        private void OnToggle(string command, string args)
-        {
-            this.enabled = !this.enabled;
-            PrintSetting("Penny Helper", this.enabled);
-            if (this.configuration.alwaysOn) this.pi.Framework.Gui.Chat.Print("(this setting is ignored since always on is set to true)");
-        }
-
-        private void OnAlwaysOn(string command, string args)
-        {
-            this.configuration.alwaysOn = !this.configuration.alwaysOn;
-            this.configuration.Save();
-            PrintSetting("Penny Helper always on", this.configuration.alwaysOn);
-        }
-
-        private void OnDelta(string command, string args)
-        {
-            try
+            if (args == "")
             {
-                this.configuration.delta = int.Parse(args);
-                this.configuration.Save();
-                this.pi.Framework.Gui.Chat.Print($"Penny Helper delta set to {this.configuration.delta}.");
+                this.enabled = !this.enabled;
+                PrintSetting("Penny Helper", this.enabled);
+                if (this.configuration.alwaysOn) this.pi.Framework.Gui.Chat.Print("(this setting is ignored since always on is set to true)");
+                return;
             }
-            catch (FormatException)
+            var argArray = args.Split(' ');
+            switch (argArray[0])
             {
-                this.pi.Framework.Gui.Chat.Print($"Unable to read '{args}' as an integer.");
+                case "help":
+                    this.pi.Framework.Gui.Chat.Print("/penny: toggles Penny Helper (does not do anything if alwayson is set to true)");
+                    this.pi.Framework.Gui.Chat.Print("/penny help: displays this help page");
+                    this.pi.Framework.Gui.Chat.Print("/penny alwayson: Toggles whether Penny Helper is always on; this setting is saved");
+                    this.pi.Framework.Gui.Chat.Print("/penny delta <delta>: Sets the undercutting amount to be <delta>; this setting is saved");
+                    this.pi.Framework.Gui.Chat.Print("/penny verbose: Toggles whether Penny Helper prints whenver it writes to clipboard; this setting is saved");
+                    return;
+                case "alwayson":
+                    this.configuration.alwaysOn = !this.configuration.alwaysOn;
+                    this.configuration.Save();
+                    PrintSetting("Penny Helper always on", this.configuration.alwaysOn);
+                    return;
+                case "delta":
+                    if (argArray.Length < 2)
+                    {
+                        this.pi.Framework.Gui.Chat.Print("/penny delta <delta> is missing its <delta> argument.");
+                        return;
+                    }
+                    var arg = argArray[1];
+                    try
+                    {
+                        this.configuration.delta = int.Parse(arg);
+                        this.configuration.Save();
+                        this.pi.Framework.Gui.Chat.Print($"Penny Helper delta set to {this.configuration.delta}.");
+                    }
+                    catch (FormatException)
+                    {
+                        this.pi.Framework.Gui.Chat.Print($"Unable to read '{arg}' as an integer.");
+                    }
+                    catch (OverflowException)
+                    {
+                        this.pi.Framework.Gui.Chat.Print($"'{arg}' is out of range.");
+                    }
+                    return;
+                case "verbose":
+                    this.configuration.verbose = !this.configuration.verbose;
+                    this.configuration.Save();
+                    PrintSetting("Penny Helper verbose", this.configuration.verbose);
+                    return;
+                default:
+                    this.pi.Framework.Gui.Chat.Print("Unknown subcommand used. View /penny help for valid subcommands.");
+                    return;
             }
-            catch (OverflowException)
-            {
-                this.pi.Framework.Gui.Chat.Print($"'{args}' is out of range.");
-            }
-        }
-
-        private void OnVerbose (string command, string args)
-        {
-            this.configuration.verbose = !this.configuration.verbose;
-            this.configuration.Save();
-            PrintSetting("Penny Helper verbose", this.configuration.verbose);
         }
 
         private void OnNetworkEvent(IntPtr dataPtr, ushort opCode, uint sourceActorId, uint targetActorId, NetworkMessageDirection direction)
