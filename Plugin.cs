@@ -12,6 +12,7 @@ namespace PennyHelper
         public string Name => "Penny Helper";
 
         private const string commandName = "/penny";
+        private const string helpName = "help";
         private const string alwaysOnName = "alwayson";
         private const string deltaName = "delta";
         private const string verboseName = "verbose";
@@ -35,7 +36,7 @@ namespace PennyHelper
 
             this.pi.CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
             {
-                HelpMessage = "Toggles Penny Helper mode. /penny help for additional options"
+                HelpMessage = $"Toggles Penny Helper mode. {commandName} {helpName} for additional options"
             });
 
             this.pi.Framework.Network.OnNetworkMessage += OnNetworkEvent;
@@ -59,28 +60,28 @@ namespace PennyHelper
             {
                 this.enabled = !this.enabled;
                 PrintSetting("Penny Helper", this.enabled);
-                if (this.configuration.alwaysOn) this.pi.Framework.Gui.Chat.Print("(this setting is ignored since always on is set to true)");
+                if (this.configuration.alwaysOn) this.pi.Framework.Gui.Chat.Print($"(this setting is ignored since {alwaysOnName} is set to true)");
                 return;
             }
             var argArray = args.Split(' ');
             switch (argArray[0])
             {
-                case "help":
-                    this.pi.Framework.Gui.Chat.Print("/penny: toggles Penny Helper (does not do anything if alwayson is set to true)");
-                    this.pi.Framework.Gui.Chat.Print("/penny help: displays this help page");
-                    this.pi.Framework.Gui.Chat.Print("/penny alwayson: Toggles whether Penny Helper is always on; this setting is saved");
-                    this.pi.Framework.Gui.Chat.Print("/penny delta <delta>: Sets the undercutting amount to be <delta>; this setting is saved");
-                    this.pi.Framework.Gui.Chat.Print("/penny verbose: Toggles whether Penny Helper prints whenver it writes to clipboard; this setting is saved");
+                case helpName:
+                    this.pi.Framework.Gui.Chat.Print($"{commandName}: toggles Penny Helper (does not do anything if {alwaysOnName} is set to true)");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {helpName}: displays this help page");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {alwaysOnName}: Toggles whether Penny Helper is always on; this setting is saved");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>; this setting is saved");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether Penny Helper prints whenver it writes to clipboard; this setting is saved");
                     return;
-                case "alwayson":
+                case alwaysOnName:
                     this.configuration.alwaysOn = !this.configuration.alwaysOn;
                     this.configuration.Save();
-                    PrintSetting("Penny Helper always on", this.configuration.alwaysOn);
+                    PrintSetting($"Penny Helper {alwaysOnName}", this.configuration.alwaysOn);
                     return;
-                case "delta":
+                case deltaName:
                     if (argArray.Length < 2)
                     {
-                        this.pi.Framework.Gui.Chat.Print("/penny delta <delta> is missing its <delta> argument.");
+                        this.pi.Framework.Gui.Chat.Print($"{commandName} {deltaName} <delta> is missing its <delta> argument.");
                         return;
                     }
                     var arg = argArray[1];
@@ -88,7 +89,7 @@ namespace PennyHelper
                     {
                         this.configuration.delta = int.Parse(arg);
                         this.configuration.Save();
-                        this.pi.Framework.Gui.Chat.Print($"Penny Helper delta set to {this.configuration.delta}.");
+                        this.pi.Framework.Gui.Chat.Print($"Penny Helper {deltaName} set to {this.configuration.delta}.");
                     }
                     catch (FormatException)
                     {
@@ -99,13 +100,13 @@ namespace PennyHelper
                         this.pi.Framework.Gui.Chat.Print($"'{arg}' is out of range.");
                     }
                     return;
-                case "verbose":
+                case verboseName:
                     this.configuration.verbose = !this.configuration.verbose;
                     this.configuration.Save();
-                    PrintSetting("Penny Helper verbose", this.configuration.verbose);
+                    PrintSetting($"Penny Helper {verboseName}", this.configuration.verbose);
                     return;
                 default:
-                    this.pi.Framework.Gui.Chat.Print("Unknown subcommand used. View /penny help for valid subcommands.");
+                    this.pi.Framework.Gui.Chat.Print($"Unknown subcommand used. View {commandName} {helpName} for valid subcommands.");
                     return;
             }
         }
