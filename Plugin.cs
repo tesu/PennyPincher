@@ -7,7 +7,7 @@ using Dalamud.Plugin;
 using System;
 using System.Windows.Forms;
 
-namespace PennyHelper
+namespace PennyPincher
 {
     public class Plugin : IDalamudPlugin
     {
