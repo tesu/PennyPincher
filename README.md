@@ -1,4 +1,4 @@
-# Penny Helper
+# Penny Pincher
 XIVLauncher plugin for simplifying "pennying" (undercutting current lowest offer by 1).
 
 The usual workflow for this is the following:
@@ -22,12 +22,14 @@ Therefore, your new workflow becomes this:
 This both speeds up the process and reduces room for error from typos/missing digits.
 
 ## Commands
-Penny Helper can be toggled on and off temporarily through `/penny`; the expected use case is to toggle this on right before a price adjustment session, and then toggling it off afterwards so you don't accidentally clobber your clipboard if you open up the marketboard later.
+Penny Pincher can be toggled on and off temporarily through `/penny`; you shouldn't need to touch this at all if you have the `smart` setting on. The setting resets to false whenever the game reloads (the other settings are all saved).
 
-Penny Helper can be kept permanently on with the `alwayson` setting, which can be toggled with `/penny alwayson`. This setting is saved, so it persists through game restarts.
+Penny Pincher can be kept permanently on with the `alwayson` setting, which can be toggled with `/penny alwayson`.
 
-Penny Helper can undercut (or overcut...?) by any integer, which you can set through `/penny delta <delta>`. The default value is 1, so a delta of 0 would copy the same price as the lowest offer, and a delta of 100 would copy 100 under that. Negative numbers work exactly how you would expect. This setting is also saved, so it persists through game restarts.
+Penny Pincher can undercut (or overcut...?) by any integer, which you can set through `/penny delta <delta>`. The default value is 1, so a delta of 0 would copy the same price as the lowest offer, and a delta of 100 would copy 100 under the lowest offer. Negative numbers work exactly how you would expect, though it's not obvious to me how this could be useful.
 
-Penny Helper writes to the chat whenever it saves a new value to the clipboard by default. To toggle this setting, use `/penny verbose`. This setting is saved.
+Penny Pincher is automatically enabled when you open a retainer menu, and disabled when you close it. Toggle this setting with `/penny smart`.
+
+Penny Pincher writes to the chat whenever it saves a new value to the clipboard by default. To toggle this setting, use `/penny verbose`.
 
 You can review any of the existing commands by calling `/penny help`.
