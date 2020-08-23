@@ -142,7 +142,7 @@ namespace PennyPincher
         private void OnChatEvent(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled)
         {
             if (!this.configuration.smart) return;
-            if (!type.Equals(XivChatType.Echo)) return;
+            if (!type.Equals(XivChatType.SystemMessage)) return;
             if (message.TextValue.StartsWith("You are no longer selling items in the "))
             {
                 this.enabled = true;
