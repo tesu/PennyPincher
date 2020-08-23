@@ -45,7 +45,7 @@ namespace PennyHelper
 
             this.pi.CommandManager.AddHandler(deltaName, new CommandInfo(OnDelta)
             {
-                HelpMessage = "Sets Penny Helper delta setting (default: 1)."
+                HelpMessage = "Sets Penny Helper delta setting (default: 1). Usage: /pennydelta <delta>"
             });
 
             this.pi.CommandManager.AddHandler(verboseName, new CommandInfo(OnVerbose)
@@ -118,12 +118,13 @@ namespace PennyHelper
             if (opCode != this.pi.Data.ServerOpCodes["MarketBoardOfferings"]) return;
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
             var catalogId = listing.ItemListings[0].CatalogId;
-            var price = (uint) (listing.ItemListings[0].PricePerUnit - this.configuration.delta);
+            var price = listing.ItemListings[0].PricePerUnit;
             if (this.lastItem == catalogId && this.lastPrice < price) return;
             this.lastItem = catalogId;
             this.lastPrice = price;
-            Clipboard.SetText(price.ToString());
-            if (this.configuration.verbose) this.pi.Framework.Gui.Chat.Print($"{price} copied to clipboard.");
+            var newPrice = listing.ItemListings[0].PricePerUnit - this.configuration.delta;
+            Clipboard.SetText(newPrice.ToString());
+            if (this.configuration.verbose) this.pi.Framework.Gui.Chat.Print($"{newPrice} copied to clipboard.");
         }
     }
 }
