@@ -11,6 +11,7 @@ namespace PennyHelper
 
         public bool alwaysOn { get; set; } = false;
         public int delta { get; set; } = 1;
+        public bool smart { get; set; } = true;
         public bool verbose { get; set; } = true;
 
         [NonSerialized]

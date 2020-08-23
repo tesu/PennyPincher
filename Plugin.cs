@@ -1,6 +1,8 @@
-﻿using Dalamud.Game.Command;
-using Dalamud.Game.Network.Structures;
+﻿using Dalamud.Game.Chat;
+using Dalamud.Game.Chat.SeStringHandling;
+using Dalamud.Game.Command;
 using Dalamud.Game.Internal.Network;
+using Dalamud.Game.Network.Structures;
 using Dalamud.Plugin;
 using System;
 using System.Windows.Forms;
@@ -9,12 +11,13 @@ namespace PennyHelper
 {
     public class Plugin : IDalamudPlugin
     {
-        public string Name => "Penny Helper";
+        public string Name => "Penny Pincher";
 
         private const string commandName = "/penny";
         private const string helpName = "help";
         private const string alwaysOnName = "alwayson";
         private const string deltaName = "delta";
+        private const string smartName = "smart";
         private const string verboseName = "verbose";
 
         private DalamudPluginInterface pi;
@@ -36,14 +39,16 @@ namespace PennyHelper
 
             this.pi.CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
             {
-                HelpMessage = $"Toggles Penny Helper mode. {commandName} {helpName} for additional options"
+                HelpMessage = $"Toggles {Name} mode. {commandName} {helpName} for additional options"
             });
 
             this.pi.Framework.Network.OnNetworkMessage += OnNetworkEvent;
+            this.pi.Framework.Gui.Chat.OnChatMessage += OnChatEvent;
         }
 
         public void Dispose()
         {
+            this.pi.Framework.Gui.Chat.OnChatMessage -= OnChatEvent;
             this.pi.Framework.Network.OnNetworkMessage -= OnNetworkEvent;
             this.pi.CommandManager.RemoveHandler(commandName);
             this.pi.Dispose();
@@ -59,7 +64,7 @@ namespace PennyHelper
             if (args == "")
             {
                 this.enabled = !this.enabled;
-                PrintSetting("Penny Helper", this.enabled);
+                PrintSetting($"{Name}", this.enabled);
                 if (this.configuration.alwaysOn) this.pi.Framework.Gui.Chat.Print($"(this setting is ignored since {alwaysOnName} is set to true)");
                 return;
             }
@@ -67,16 +72,17 @@ namespace PennyHelper
             switch (argArray[0])
             {
                 case helpName:
-                    this.pi.Framework.Gui.Chat.Print($"{commandName}: toggles Penny Helper (does not do anything if {alwaysOnName} is set to true)");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName}: toggles {Name} (resets to false on game start, does not do anything if {alwaysOnName} is set to true)");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {helpName}: displays this help page");
-                    this.pi.Framework.Gui.Chat.Print($"{commandName} {alwaysOnName}: Toggles whether Penny Helper is always on; this setting is saved");
-                    this.pi.Framework.Gui.Chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>; this setting is saved");
-                    this.pi.Framework.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether Penny Helper prints whenver it writes to clipboard; this setting is saved");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {alwaysOnName}: Toggles whether {Name} is always on");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically turn on/off when you access a retainer");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether {Name} prints whenever it writes to clipboard");
                     return;
                 case alwaysOnName:
                     this.configuration.alwaysOn = !this.configuration.alwaysOn;
                     this.configuration.Save();
-                    PrintSetting($"Penny Helper {alwaysOnName}", this.configuration.alwaysOn);
+                    PrintSetting($"{Name} {alwaysOnName}", this.configuration.alwaysOn);
                     return;
                 case deltaName:
                     if (argArray.Length < 2)
@@ -89,7 +95,7 @@ namespace PennyHelper
                     {
                         this.configuration.delta = int.Parse(arg);
                         this.configuration.Save();
-                        this.pi.Framework.Gui.Chat.Print($"Penny Helper {deltaName} set to {this.configuration.delta}.");
+                        this.pi.Framework.Gui.Chat.Print($"{Name} {deltaName} set to {this.configuration.delta}.");
                     }
                     catch (FormatException)
                     {
@@ -100,13 +106,18 @@ namespace PennyHelper
                         this.pi.Framework.Gui.Chat.Print($"'{arg}' is out of range.");
                     }
                     return;
+                case smartName:
+                    this.configuration.smart = !this.configuration.smart;
+                    this.configuration.Save();
+                    PrintSetting($"{Name} {smartName}", this.configuration.smart);
+                    return;
                 case verboseName:
                     this.configuration.verbose = !this.configuration.verbose;
                     this.configuration.Save();
-                    PrintSetting($"Penny Helper {verboseName}", this.configuration.verbose);
+                    PrintSetting($"{Name} {verboseName}", this.configuration.verbose);
                     return;
                 default:
-                    this.pi.Framework.Gui.Chat.Print($"Unknown subcommand used. View {commandName} {helpName} for valid subcommands.");
+                    this.pi.Framework.Gui.Chat.Print($"Unknown subcommand used. Run {commandName} {helpName} for valid subcommands.");
                     return;
             }
         }
@@ -126,6 +137,22 @@ namespace PennyHelper
             var newPrice = listing.ItemListings[0].PricePerUnit - this.configuration.delta;
             Clipboard.SetText(newPrice.ToString());
             if (this.configuration.verbose) this.pi.Framework.Gui.Chat.Print($"{newPrice} copied to clipboard.");
+        }
+
+        private void OnChatEvent(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled)
+        {
+            if (!this.configuration.smart) return;
+            if (!type.Equals(XivChatType.Echo)) return;
+            if (message.TextValue.StartsWith("You are no longer selling items in the "))
+            {
+                this.enabled = true;
+                if (this.configuration.verbose) PrintSetting($"{Name}", this.enabled);
+            }
+            if (message.TextValue.StartsWith("You are now selling items in the "))
+            {
+                this.enabled = false;
+                if (this.configuration.verbose) PrintSetting($"{Name}", this.enabled);
+            }
         }
     }
 }
