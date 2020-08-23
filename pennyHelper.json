@@ -6,6 +6,6 @@
   "AssemblyVersion": "1.0.0.0",
   "RepoUrl": "https://github.com/tesu/PennyHelper",
   "ApplicableVersion": "any",
-  "Tags": ["marketboard", "plugin", "penny", "clipboard"],
+  "Tags": ["marketboard", "undercut", "penny", "clipboard"],
   "DalamudApiLevel": 1
 }
