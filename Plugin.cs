@@ -27,7 +27,7 @@ namespace PennyPincher
         private uint lastItem;
         private uint lastPrice;
         private bool lastHq;
-        private long lastCopied;
+
         public void Initialize(DalamudPluginInterface pluginInterface)
         {
             this.pi = pluginInterface;
@@ -39,7 +39,6 @@ namespace PennyPincher
             this.lastItem = 0;
             this.lastPrice = 0;
             this.lastHq = false;
-            this.lastCopied = 0;
 
             this.pi.CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
             {
@@ -150,9 +149,7 @@ namespace PennyPincher
             this.lastItem = catalogId;
             this.lastPrice = price;
             this.lastHq = this.configuration.hq;
-            var newPrice = Math.Max(price - this.configuration.delta, 1);
-            if (this.lastCopied == newPrice) return;
-            this.lastCopied = newPrice;
+            var newPrice = price - this.configuration.delta;
             Clipboard.SetText(newPrice.ToString());
             if (this.configuration.verbose) this.pi.Framework.Gui.Chat.Print($"{newPrice} copied to clipboard.");
         }
