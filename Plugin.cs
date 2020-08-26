@@ -17,6 +17,7 @@ namespace PennyPincher
         private const string helpName = "help";
         private const string alwaysOnName = "alwayson";
         private const string deltaName = "delta";
+        private const string hqName = "hq";
         private const string smartName = "smart";
         private const string verboseName = "verbose";
 
@@ -25,6 +26,7 @@ namespace PennyPincher
         private bool enabled;
         private uint lastItem;
         private uint lastPrice;
+        private bool lastHq;
 
         public void Initialize(DalamudPluginInterface pluginInterface)
         {
@@ -36,6 +38,7 @@ namespace PennyPincher
             this.enabled = false;
             this.lastItem = 0;
             this.lastPrice = 0;
+            this.lastHq = false;
 
             this.pi.CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
             {
@@ -76,8 +79,9 @@ namespace PennyPincher
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {helpName}: displays this help page");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {alwaysOnName}: Toggles whether {Name} is always on");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>");
-                    this.pi.Framework.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically turn on/off when you access a retainer");
-                    this.pi.Framework.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether {Name} prints whenever it writes to clipboard");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {hqName}: Toggles whether to undercut from HQ items only, or from both NQ and HQ");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically toggle when you access a retainer");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether {Name} prints whenever it copies to clipboard");
                     return;
                 case alwaysOnName:
                     this.configuration.alwaysOn = !this.configuration.alwaysOn;
@@ -106,6 +110,11 @@ namespace PennyPincher
                         this.pi.Framework.Gui.Chat.Print($"'{arg}' is out of range.");
                     }
                     return;
+                case hqName:
+                    this.configuration.hq = !this.configuration.hq;
+                    this.configuration.Save();
+                    PrintSetting($"{Name} {hqName}", this.configuration.hq);
+                    return;
                 case smartName:
                     this.configuration.smart = !this.configuration.smart;
                     this.configuration.Save();
@@ -129,12 +138,18 @@ namespace PennyPincher
             if (!this.pi.Data.IsDataReady) return;
             if (opCode != this.pi.Data.ServerOpCodes["MarketBoardOfferings"]) return;
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
-            var catalogId = listing.ItemListings[0].CatalogId;
-            var price = listing.ItemListings[0].PricePerUnit;
-            if (this.lastItem == catalogId && this.lastPrice < price) return;
+            var i = 0;
+            while (this.configuration.hq && i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) {
+                i++;
+            }
+            if (i == listing.ItemListings.Count) return; // didn't find HQ item
+            uint catalogId = listing.ItemListings[i].CatalogId;
+            uint price = listing.ItemListings[i].PricePerUnit;
+            if (this.lastItem == catalogId && this.lastPrice < price && this.lastHq == this.configuration.hq) return;
             this.lastItem = catalogId;
             this.lastPrice = price;
-            var newPrice = listing.ItemListings[0].PricePerUnit - this.configuration.delta;
+            this.lastHq = this.configuration.hq;
+            var newPrice = price - this.configuration.delta;
             Clipboard.SetText(newPrice.ToString());
             if (this.configuration.verbose) this.pi.Framework.Gui.Chat.Print($"{newPrice} copied to clipboard.");
         }
@@ -143,6 +158,7 @@ namespace PennyPincher
         {
             if (!this.configuration.smart) return;
             if (!type.Equals(XivChatType.SystemMessage)) return;
+            // TODO: something more clever like function hooking
             if (message.TextValue.StartsWith("You are no longer selling items in the "))
             {
                 this.enabled = true;
