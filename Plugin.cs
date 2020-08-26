@@ -1,10 +1,9 @@
-﻿using Dalamud.Game.Chat;
-using Dalamud.Game.Chat.SeStringHandling;
-using Dalamud.Game.Command;
+﻿using Dalamud.Game.Command;
 using Dalamud.Game.Internal.Network;
 using Dalamud.Game.Network.Structures;
 using Dalamud.Plugin;
 using System;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace PennyPincher
@@ -26,6 +25,10 @@ namespace PennyPincher
         private bool enabled;
         private bool newRequest;
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate IntPtr GetFilePointer(byte index);
+        private GetFilePointer getFilePtr;
+
         public void Initialize(DalamudPluginInterface pluginInterface)
         {
             this.pi = pluginInterface;
@@ -42,12 +45,20 @@ namespace PennyPincher
             });
 
             this.pi.Framework.Network.OnNetworkMessage += OnNetworkEvent;
-            this.pi.Framework.Gui.Chat.OnChatMessage += OnChatEvent;
+
+            try
+            {
+                var ptr = this.pi.TargetModuleScanner.ScanText("E8 ?? ?? ?? ?? 48 85 C0 74 14 83 7B 44 00");
+                this.getFilePtr = Marshal.GetDelegateForFunctionPointer<GetFilePointer>(ptr);
+            } catch (Exception e)
+            {
+                this.getFilePtr = null;
+                PluginLog.LogError(e.ToString());
+            }
         }
 
         public void Dispose()
         {
-            this.pi.Framework.Gui.Chat.OnChatMessage -= OnChatEvent;
             this.pi.Framework.Network.OnNetworkMessage -= OnNetworkEvent;
             this.pi.CommandManager.RemoveHandler(commandName);
             this.pi.Dispose();
@@ -127,13 +138,18 @@ namespace PennyPincher
             }
         }
 
+        private bool Retainer()
+        {
+            return (this.getFilePtr == null) ? false : Marshal.ReadInt64(this.getFilePtr(7), 0xB0) != 0;
+        }
+
         private void OnNetworkEvent(IntPtr dataPtr, ushort opCode, uint sourceActorId, uint targetActorId, NetworkMessageDirection direction)
         {
-            if (!this.enabled && !this.configuration.alwaysOn) return;
             if (direction != NetworkMessageDirection.ZoneDown) return;
             if (!this.pi.Data.IsDataReady) return;
             if (opCode == this.pi.Data.ServerOpCodes["MarketBoardItemRequestStart"]) this.newRequest = true;
             if (opCode != this.pi.Data.ServerOpCodes["MarketBoardOfferings"] || !this.newRequest) return;
+            if (!this.enabled && !this.configuration.alwaysOn && (!this.configuration.smart || !Retainer())) return;
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
             var i = 0;
             while (this.configuration.hq && i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) {
@@ -144,23 +160,6 @@ namespace PennyPincher
             Clipboard.SetText(price.ToString());
             if (this.configuration.verbose) this.pi.Framework.Gui.Chat.Print($"{price} copied to clipboard.");
             this.newRequest = false;
-        }
-
-        private void OnChatEvent(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled)
-        {
-            if (!this.configuration.smart) return;
-            if (!type.Equals(XivChatType.SystemMessage)) return;
-            // TODO: something more clever like function hooking
-            if (message.TextValue.StartsWith("You are no longer selling items in the "))
-            {
-                this.enabled = true;
-                if (this.configuration.verbose) PrintSetting($"{Name}", this.enabled);
-            }
-            if (message.TextValue.StartsWith("You are now selling items in the "))
-            {
-                this.enabled = false;
-                if (this.configuration.verbose) PrintSetting($"{Name}", this.enabled);
-            }
         }
     }
 }
