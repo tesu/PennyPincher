@@ -24,9 +24,7 @@ namespace PennyPincher
         private DalamudPluginInterface pi;
         private Configuration configuration;
         private bool enabled;
-        private uint lastItem;
-        private uint lastPrice;
-        private bool lastHq;
+        private bool newRequest;
 
         public void Initialize(DalamudPluginInterface pluginInterface)
         {
@@ -36,9 +34,7 @@ namespace PennyPincher
             this.configuration.Initialize(this.pi);
 
             this.enabled = false;
-            this.lastItem = 0;
-            this.lastPrice = 0;
-            this.lastHq = false;
+            this.newRequest = false;
 
             this.pi.CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
             {
@@ -136,22 +132,18 @@ namespace PennyPincher
             if (!this.enabled && !this.configuration.alwaysOn) return;
             if (direction != NetworkMessageDirection.ZoneDown) return;
             if (!this.pi.Data.IsDataReady) return;
-            if (opCode != this.pi.Data.ServerOpCodes["MarketBoardOfferings"]) return;
+            if (opCode == this.pi.Data.ServerOpCodes["MarketBoardItemRequestStart"]) this.newRequest = true;
+            if (opCode != this.pi.Data.ServerOpCodes["MarketBoardOfferings"] || !this.newRequest) return;
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
             var i = 0;
             while (this.configuration.hq && i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) {
                 i++;
             }
             if (i == listing.ItemListings.Count) return; // didn't find HQ item
-            uint catalogId = listing.ItemListings[i].CatalogId;
-            uint price = listing.ItemListings[i].PricePerUnit;
-            if (this.lastItem == catalogId && this.lastPrice < price && this.lastHq == this.configuration.hq) return;
-            this.lastItem = catalogId;
-            this.lastPrice = price;
-            this.lastHq = this.configuration.hq;
-            var newPrice = price - this.configuration.delta;
-            Clipboard.SetText(newPrice.ToString());
-            if (this.configuration.verbose) this.pi.Framework.Gui.Chat.Print($"{newPrice} copied to clipboard.");
+            var price = listing.ItemListings[i].PricePerUnit - this.configuration.delta;
+            Clipboard.SetText(price.ToString());
+            if (this.configuration.verbose) this.pi.Framework.Gui.Chat.Print($"{price} copied to clipboard.");
+            this.newRequest = false;
         }
 
         private void OnChatEvent(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled)
