@@ -75,19 +75,18 @@ namespace PennyPincher
             {
                 this.enabled = !this.enabled;
                 PrintSetting($"{Name}", this.enabled);
-                if (this.configuration.alwaysOn) this.pi.Framework.Gui.Chat.Print($"(this setting is ignored since {alwaysOnName} is set to true)");
                 return;
             }
             var argArray = args.Split(' ');
             switch (argArray[0])
             {
                 case helpName:
-                    this.pi.Framework.Gui.Chat.Print($"{commandName}: toggles {Name} (resets to false on game start, does not do anything if {alwaysOnName} is set to true)");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName}: toggles {Name} (superseded by {alwaysOnName} and {smartName})");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {helpName}: displays this help page");
-                    this.pi.Framework.Gui.Chat.Print($"{commandName} {alwaysOnName}: Toggles whether {Name} is always on");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {alwaysOnName}: Toggles whether {Name} is always on (supersedes {smartName})");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>");
-                    this.pi.Framework.Gui.Chat.Print($"{commandName} {hqName}: Toggles whether to undercut from HQ items only, or from both NQ and HQ");
-                    this.pi.Framework.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically toggle when you access a retainer");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {hqName}: Toggles whether to undercut from HQ items only");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically copy when you're using a retainer");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether {Name} prints whenever it copies to clipboard");
                     return;
                 case alwaysOnName:
