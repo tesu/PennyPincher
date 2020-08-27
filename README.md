@@ -22,16 +22,11 @@ Therefore, your new workflow becomes this:
 This both speeds up the process and reduces room for error from typos/missing digits.
 
 ## Commands
-Penny Pincher can be toggled on and off temporarily through `/penny`; you shouldn't need to touch this at all if you have the `smart` setting on. The setting resets to false whenever the game reloads (the other settings are all saved).
-
-Penny Pincher can be kept permanently on with the `alwayson` setting, which can be toggled with `/penny alwayson`.
-
-Penny Pincher can undercut (or overcut...?) by any integer, which you can set through `/penny delta <delta>`. The default value is 1, so a delta of 0 would copy the same price as the lowest offer, and a delta of 100 would copy 100 under the lowest offer. Negative numbers work exactly how you would expect, though it's not obvious to me how this could be useful.
-
-Penny Pinch defaults to undercutting the cheapest item, regardless of HQ or NQ status. You can choose to only undercut HQ items with the `/penny hq` setting.
-
-Penny Pincher is automatically enabled when you open a retainer menu, and disabled when you close it. Toggle this setting with `/penny smart`.
-
-Penny Pincher writes to the chat whenever it saves a new value to the clipboard by default. To toggle this setting, use `/penny verbose`.
-
-You can review any of the existing commands by calling `/penny help`.
+| Command&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Description | Default |
+|---------|-------------|---------|
+|`/penny`|Toggles the clipping functionality temporarily. You shouldn't need to use this at all if the `smart` setting is on. This is the only setting that does not persist through game restarts.|disabled|
+|`/penny alwayson`|Toggles whether to always copy prices to clipboard. Supercedes the `smart` setting.|disabled|
+|`/penny delta <delta>`|Sets how much to undercut by. A delta of 0 would copy the same price as the lowest offer, and a delta of 100 would copy 100 under the lowest offer. Negative numbers work exactly how you would expect, though it's not obvious to me how this could be useful.|1|
+|`/penny hq`|Toggles whether to only undercut high quality items.|disabled|
+|`/penny smart`|Toggles whether to always copy prices when accessing the marketboard from a retainer.|enabled|
+|`/penny help`|Displays the list of commands.||
