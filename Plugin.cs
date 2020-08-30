@@ -2,7 +2,10 @@
 using Dalamud.Game.Internal.Network;
 using Dalamud.Game.Network.Structures;
 using Dalamud.Plugin;
+using Lumina.Excel.GeneratedSheets;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -20,6 +23,7 @@ namespace PennyPincher
         private const string smartName = "smart";
         private const string verboseName = "verbose";
 
+        private List<Item> items;
         private DalamudPluginInterface pi;
         private Configuration configuration;
         private bool enabled;
@@ -36,6 +40,7 @@ namespace PennyPincher
             this.configuration = this.pi.GetPluginConfig() as Configuration ?? new Configuration();
             this.configuration.Initialize(this.pi);
 
+            this.items = this.pi.Data.GetExcelSheet<Item>().ToList();
             this.enabled = false;
             this.newRequest = false;
 
@@ -151,10 +156,11 @@ namespace PennyPincher
             if (!this.enabled && !this.configuration.alwaysOn && (!this.configuration.smart || !Retainer())) return;
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
             var i = 0;
-            while (this.configuration.hq && i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) {
-                i++;
+            if (this.configuration.hq && this.items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
+            {
+                while (i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) i++;
+                if (i == listing.ItemListings.Count) return;
             }
-            if (i == listing.ItemListings.Count) return; // didn't find HQ item
             var price = listing.ItemListings[i].PricePerUnit - this.configuration.delta;
             Clipboard.SetText(price.ToString());
             if (this.configuration.verbose) this.pi.Framework.Gui.Chat.Print($"{price} copied to clipboard.");
