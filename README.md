@@ -31,4 +31,5 @@ This both speeds up the process and reduces room for error from typos/missing di
 |`/penny delta <delta>`|Sets how much to undercut by. A delta of 0 would copy the same price as the lowest offer, and a delta of 100 would copy 100 under the lowest offer. Negative numbers work exactly how you would expect, though it's not obvious to me how this could be useful.|1|
 |`/penny hq`|Toggles whether to only undercut high quality items. This setting does not apply to items with no high quality variant, where the cheapest normal quality item will always be undercut.|disabled|
 |`/penny smart`|Toggles whether to always copy prices when accessing the marketboard from a retainer.|enabled|
+|`/penny verbose`|Toggles whether to print to chat when a price to copied.|enabled|
 |`/penny help`|Displays the list of commands.||
