@@ -17,16 +17,14 @@ namespace PennyPincher
 
         private const string commandName = "/penny";
         private const string helpName = "help";
-        private const string alwaysOnName = "alwayson";
         private const string deltaName = "delta";
         private const string hqName = "hq";
         private const string smartName = "smart";
         private const string verboseName = "verbose";
 
-        private List<Item> items;
         private DalamudPluginInterface pi;
+        private Lumina.Excel.ExcelSheet<Item> items;
         private Configuration configuration;
-        private bool enabled;
         private bool newRequest;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -40,13 +38,12 @@ namespace PennyPincher
             this.configuration = this.pi.GetPluginConfig() as Configuration ?? new Configuration();
             this.configuration.Initialize(this.pi);
 
-            this.items = this.pi.Data.GetExcelSheet<Item>().ToList();
-            this.enabled = false;
+            this.items = this.pi.Data.GetExcelSheet<Item>();
             this.newRequest = false;
 
             this.pi.CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
             {
-                HelpMessage = $"Toggles {Name} mode. {commandName} {helpName} for additional options"
+                HelpMessage = $"Toggles {Name}. {commandName} {helpName} for additional options"
             });
 
             this.pi.Framework.Network.OnNetworkMessage += OnNetworkEvent;
@@ -78,26 +75,27 @@ namespace PennyPincher
         {
             if (args == "")
             {
-                this.enabled = !this.enabled;
-                PrintSetting($"{Name}", this.enabled);
+                this.configuration.alwaysOn = !this.configuration.alwaysOn;
+                this.configuration.Save();
+                PrintSetting($"{Name}", this.configuration.alwaysOn);
                 return;
             }
             var argArray = args.Split(' ');
             switch (argArray[0])
             {
                 case helpName:
-                    this.pi.Framework.Gui.Chat.Print($"{commandName}: toggles {Name} (superseded by {alwaysOnName} and {smartName})");
-                    this.pi.Framework.Gui.Chat.Print($"{commandName} {helpName}: displays this help page");
-                    this.pi.Framework.Gui.Chat.Print($"{commandName} {alwaysOnName}: Toggles whether {Name} is always on (supersedes {smartName})");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName}: Toggles whether {Name} is always on (supersedes {smartName})");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {hqName}: Toggles whether to undercut from HQ items only");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically copy when you're using a retainer");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether {Name} prints whenever it copies to clipboard");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {helpName}: Displays this help page");
                     return;
-                case alwaysOnName:
+                case "alwayson":
                     this.configuration.alwaysOn = !this.configuration.alwaysOn;
                     this.configuration.Save();
-                    PrintSetting($"{Name} {alwaysOnName}", this.configuration.alwaysOn);
+                    PrintSetting($"{Name}", this.configuration.alwaysOn);
+                    this.pi.Framework.Gui.Chat.Print($"Note that \"{commandName} alwayson\" has been renamed to \"{commandName}\".");
                     return;
                 case deltaName:
                     if (argArray.Length < 2)
@@ -153,7 +151,7 @@ namespace PennyPincher
             if (!this.pi.Data.IsDataReady) return;
             if (opCode == this.pi.Data.ServerOpCodes["MarketBoardItemRequestStart"]) this.newRequest = true;
             if (opCode != this.pi.Data.ServerOpCodes["MarketBoardOfferings"] || !this.newRequest) return;
-            if (!this.enabled && !this.configuration.alwaysOn && (!this.configuration.smart || !Retainer())) return;
+            if (!this.configuration.alwaysOn && (!this.configuration.smart || !Retainer())) return;
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
             var i = 0;
             if (this.configuration.hq && this.items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
