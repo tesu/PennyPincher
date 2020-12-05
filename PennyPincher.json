@@ -7,5 +7,5 @@
   "RepoUrl": "https://github.com/tesu/PennyPincher",
   "ApplicableVersion": "any",
   "Tags": ["marketboard", "undercut", "penny", "clipboard"],
-  "DalamudApiLevel": 1
+  "DalamudApiLevel": 2
 }
