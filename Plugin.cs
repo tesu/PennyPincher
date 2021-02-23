@@ -145,7 +145,7 @@ namespace PennyPincherPlus
                         return;
                     }
                     if(argArray.Length == 2){
-                        this.pi.Framework.Gui.Chat.Print($"{commandName} {whitelistName} <add|remove> <retainerName> ...: Must provide a retainer name.");
+                        this.pi.Framework.Gui.Chat.Print($"{commandName} {whitelistName} <add|remove> <retainerName> ... : Must provide a retainer name.");
                         return;
                     }else{
                         if(argArray[1] == "add"){
