@@ -7,25 +7,28 @@ using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using System.Collections.Generic;
 
-namespace PennyPincher
+namespace PennyPincherPlus
 {
     public class Plugin : IDalamudPlugin
+    
     {
-        public string Name => "Penny Pincher";
+        public string Name => "Penny Pincher Plus";
 
-        private const string commandName = "/penny";
+        private const string commandName = "/ppp";
         private const string helpName = "help";
         private const string deltaName = "delta";
         private const string hqName = "hq";
         private const string smartName = "smart";
         private const string verboseName = "verbose";
-
+        private const string whitelistName = "whitelist";
+        
         private DalamudPluginInterface pi;
         private Lumina.Excel.ExcelSheet<Item> items;
         private Configuration configuration;
         private bool newRequest;
-
+        
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate IntPtr GetFilePointer(byte index);
         private GetFilePointer getFilePtr;
@@ -88,6 +91,7 @@ namespace PennyPincher
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {hqName}: Toggles whether to undercut from HQ items only");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically copy when you're using a retainer");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether {Name} prints whenever it copies to clipboard");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {whitelistName} <add|remove> <retainerName> ...: Adds/removes retainers from whitelist");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {helpName}: Displays this help page");
                     return;
                 case "alwayson":
@@ -133,6 +137,36 @@ namespace PennyPincher
                     this.configuration.Save();
                     PrintSetting($"{Name} {verboseName}", this.configuration.verbose);
                     return;
+                case whitelistName:
+                    if(argArray.Length == 1){
+                        string whitelistString = string.Join(", ", this.configuration.whitelist);
+
+                        this.pi.Framework.Gui.Chat.Print($"Retainer whitelist: {whitelistString}");
+                        return;
+                    }
+                    if(argArray.Length == 2){
+                        this.pi.Framework.Gui.Chat.Print($"{commandName} {whitelistName} <add|remove> <retainerName> ...: Must provide a retainer name.");
+                        return;
+                    }else{
+                        if(argArray[1] == "add"){
+                            for(int i = 2; i < argArray.Length; i++){
+                                this.configuration.whitelist.Add(argArray[i]);
+                                this.pi.Framework.Gui.Chat.Print($"{argArray[i]} added to the whitelist.");
+                            }
+                            this.configuration.Save();
+                            return;
+                        }else if(argArray[1] == "remove"){
+                            for(int i = 2; i < argArray.Length; i++){
+                                this.configuration.whitelist.Remove(argArray[i]);
+                                this.pi.Framework.Gui.Chat.Print($"{argArray[i]} removed from the whitelist.");
+                            }
+                            this.configuration.Save();
+                            return;
+                        }else{
+                            this.pi.Framework.Gui.Chat.Print($"{commandName} {whitelistName} <add|remove> <retainerName>: argument 2 must be add or remove.");
+                            return;
+                        }
+                    }
                 default:
                     this.pi.Framework.Gui.Chat.Print($"Unknown subcommand used. Run {commandName} {helpName} for valid subcommands.");
                     return;
@@ -158,6 +192,7 @@ namespace PennyPincher
                 while (i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) i++;
                 if (i == listing.ItemListings.Count) return;
             }
+            while(i != listing.ItemListings.Count && this.configuration.whitelist.Contains(listing.ItemListings[i].RetainerName)) i++;
             var price = listing.ItemListings[i].PricePerUnit - this.configuration.delta;
             Clipboard.SetText(price.ToString());
             if (this.configuration.verbose) this.pi.Framework.Gui.Chat.Print($"{price} copied to clipboard.");
