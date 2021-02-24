@@ -1,6 +1,7 @@
 ﻿using Dalamud.Configuration;
 using Dalamud.Plugin;
 using System;
+using System.Collections.Generic;
 
 namespace PennyPincher
 {
@@ -14,6 +15,7 @@ namespace PennyPincher
         public bool hq { get; set; } = false;
         public bool smart { get; set; } = true;
         public bool verbose { get; set; } = true;
+        public HashSet<String> whitelist { get; set; } = new HashSet<String>();
 
         [NonSerialized]
         private DalamudPluginInterface pluginInterface;
