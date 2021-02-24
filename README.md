@@ -1,6 +1,5 @@
 # Penny Pincher
-####This was not made by me, all credit goes to [tetsu](#https://github.com/tesu/PennyPincher)! This is a modified version of his project with some extra features.
----
+![Downloads Badge](https://img.shields.io/endpoint?url=https%3A%2F%2Fvz32sgcoal.execute-api.us-east-1.amazonaws.com%2FPennyPincher)
 
 XIVLauncher plugin for simplifying "pennying" (undercutting current lowest offer by 1).
 
