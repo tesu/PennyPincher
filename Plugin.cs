@@ -23,7 +23,6 @@ namespace PennyPincher
         private const string smartName = "smart";
         private const string verboseName = "verbose";
         private const string whitelistName = "whitelist";
-
         
         private DalamudPluginInterface pi;
         private Lumina.Excel.ExcelSheet<Item> items;

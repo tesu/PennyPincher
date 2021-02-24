@@ -32,13 +32,13 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Dalamud">
-      <HintPath>C:\Users\austi\AppData\Roaming\XIVLauncher\addon\Hooks\5.2.3.4\Dalamud.dll</HintPath>
+      <HintPath>C:\Users\jason\AppData\Roaming\XIVLauncher\addon\Hooks\5.2.3.4\Dalamud.dll</HintPath>
     </Reference>
     <Reference Include="ImGui.NET">
-      <HintPath>C:\Users\austi\AppData\Roaming\XIVLauncher\addon\Hooks\5.2.3.4\ImGui.NET.dll</HintPath>
+      <HintPath>C:\Users\jason\AppData\Roaming\XIVLauncher\addon\Hooks\5.2.3.4\ImGui.NET.dll</HintPath>
     </Reference>
     <Reference Include="Lumina">
-      <HintPath>C:\Users\austi\AppData\Roaming\XIVLauncher\addon\Hooks\5.2.3.4\Lumina.dll</HintPath>
+      <HintPath>C:\Users\jason\AppData\Roaming\XIVLauncher\addon\Hooks\5.2.3.4\Lumina.dll</HintPath>
     </Reference>
     <Reference Include="IndexRange, Version=1.0.0.0, Culture=neutral, PublicKeyToken=35e6a3c4212514c6, processorArchitecture=MSIL">
       <HintPath>packages\IndexRange.1.0.0\lib\net471\IndexRange.dll</HintPath>
