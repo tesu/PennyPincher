@@ -34,3 +34,5 @@ This both speeds up the process and reduces room for error from typos/missing di
 |`/penny verbose`|Toggles whether to print to chat when a price to copied.|enabled|
 |`/penny whitelist <add/remove> <retainerName> ...`|Adds/removes retainers from whitelist. Multiple retainer names can be provided by adding spaces between the names.|
 |`/penny help`|Displays the list of commands.||
+
+Note that `/penny alwayson` has been renamed to `/penny` as of version 1.1.0.0
