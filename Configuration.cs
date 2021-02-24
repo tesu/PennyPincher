@@ -3,7 +3,7 @@ using Dalamud.Plugin;
 using System;
 using System.Collections.Generic;
 
-namespace PennyPincherPlus
+namespace PennyPincher
 {
     [Serializable]
     public class Configuration : IPluginConfiguration

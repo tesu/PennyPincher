@@ -9,20 +9,21 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Collections.Generic;
 
-namespace PennyPincherPlus
+namespace PennyPincher
 {
     public class Plugin : IDalamudPlugin
     
     {
-        public string Name => "Penny Pincher Plus";
+        public string Name => "Penny Pincher";
 
-        private const string commandName = "/ppp";
+        private const string commandName = "/penny";
         private const string helpName = "help";
         private const string deltaName = "delta";
         private const string hqName = "hq";
         private const string smartName = "smart";
         private const string verboseName = "verbose";
         private const string whitelistName = "whitelist";
+
         
         private DalamudPluginInterface pi;
         private Lumina.Excel.ExcelSheet<Item> items;

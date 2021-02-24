@@ -28,10 +28,10 @@ This both speeds up the process and reduces room for error from typos/missing di
 ## Commands
 | Command&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Description | Default |
 |---------|-------------|---------|
-|`/ppp`|Toggles whether to always copy prices. Supercedes the `smart` setting. |disabled|
-|`/ppp delta <delta>`|Sets how much to undercut by. A delta of 0 would copy the same price as the lowest offer, and a delta of 100 would copy 100 under the lowest offer. Negative numbers work exactly how you would expect, though it's not obvious to me how this could be useful.|1|
-|`/ppp hq`|Toggles whether to only undercut high quality items. This setting does not apply to items with no high quality variant, where the cheapest normal quality item will always be undercut.|disabled|
-|`/ppp smart`|Toggles whether to always copy prices when accessing the marketboard from a retainer.|enabled|
-|`/ppp verbose`|Toggles whether to print to chat when a price to copied.|enabled|
-|`/ppp whitelist <add/remove> <retainerName> ...`|Adds/removes retainers from whitelist. Multiple retainer names can be provided by adding spaces between the names.|
-|`/ppp help`|Displays the list of commands.||
+|`/penny`|Toggles whether to always copy prices. Supercedes the `smart` setting. |disabled|
+|`/penny delta <delta>`|Sets how much to undercut by. A delta of 0 would copy the same price as the lowest offer, and a delta of 100 would copy 100 under the lowest offer. Negative numbers work exactly how you would expect, though it's not obvious to me how this could be useful.|1|
+|`/penny hq`|Toggles whether to only undercut high quality items. This setting does not apply to items with no high quality variant, where the cheapest normal quality item will always be undercut.|disabled|
+|`/penny smart`|Toggles whether to always copy prices when accessing the marketboard from a retainer.|enabled|
+|`/penny verbose`|Toggles whether to print to chat when a price to copied.|enabled|
+|`/penny whitelist <add/remove> <retainerName> ...`|Adds/removes retainers from whitelist. Multiple retainer names can be provided by adding spaces between the names.|
+|`/penny help`|Displays the list of commands.||
