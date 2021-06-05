@@ -12,7 +12,7 @@ The usual workflow for this is the following:
 6. Update your item's price with the number you noted
 7. Confirm your new price
 
-This plugin eliminates the mental notekeeping steps in the middle by automatically copying the number you want onto your clipboard when you open the current listings window.
+This plugin eliminates the mental notekeeping steps in the middle by automatically copying the number you want (with automatic HQ support) onto your clipboard when you open the current listings window.
 
 Therefore, your new workflow becomes this:
 1. Open up the adjust price menu for the item you're undercutting
@@ -28,7 +28,6 @@ This both speeds up the process and reduces room for error from typos/missing di
 |---------|-------------|---------|
 |`/penny`|Toggles whether to always copy prices. Supercedes the `smart` setting. |disabled|
 |`/penny delta <delta>`|Sets how much to undercut by. A delta of 0 would copy the same price as the lowest offer, and a delta of 100 would copy 100 under the lowest offer. Negative numbers work exactly how you would expect, though it's not obvious to me how this could be useful.|1|
-|`/penny hq`|Toggles whether to only undercut high quality items. This setting does not apply to items with no high quality variant, where the cheapest normal quality item will always be undercut.|disabled|
 |`/penny smart`|Toggles whether to always copy prices when accessing the marketboard from a retainer.|enabled|
 |`/penny verbose`|Toggles whether to print to chat when a price to copied.|enabled|
 |`/penny help`|Displays the list of commands.||

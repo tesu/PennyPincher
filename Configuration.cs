@@ -11,7 +11,6 @@ namespace PennyPincher
 
         public bool alwaysOn { get; set; } = false;
         public int delta { get; set; } = 1;
-        public bool hq { get; set; } = false;
         public bool smart { get; set; } = true;
         public bool verbose { get; set; } = true;
 

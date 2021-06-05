@@ -1,8 +1,9 @@
 ﻿using Dalamud.Game.Command;
 using Dalamud.Game.Internal.Network;
 using Dalamud.Game.Network.Structures;
+using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Plugin;
-using Lumina.Excel.GeneratedSheets;
 using System;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -17,12 +18,10 @@ namespace PennyPincher
         private const string commandName = "/penny";
         private const string helpName = "help";
         private const string deltaName = "delta";
-        private const string hqName = "hq";
         private const string smartName = "smart";
         private const string verboseName = "verbose";
 
         private DalamudPluginInterface pi;
-        private Lumina.Excel.ExcelSheet<Item> items;
         private Configuration configuration;
         private bool newRequest;
 
@@ -37,7 +36,6 @@ namespace PennyPincher
             this.configuration = this.pi.GetPluginConfig() as Configuration ?? new Configuration();
             this.configuration.Initialize(this.pi);
 
-            this.items = this.pi.Data.GetExcelSheet<Item>();
             this.newRequest = false;
 
             this.pi.CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
@@ -85,7 +83,6 @@ namespace PennyPincher
                 case helpName:
                     this.pi.Framework.Gui.Chat.Print($"{commandName}: Toggles whether {Name} is always on (supersedes {smartName})");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>");
-                    this.pi.Framework.Gui.Chat.Print($"{commandName} {hqName}: Toggles whether to undercut from HQ items only");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically copy when you're using a retainer");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether {Name} prints whenever it copies to clipboard");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {helpName}: Displays this help page");
@@ -118,11 +115,6 @@ namespace PennyPincher
                         this.pi.Framework.Gui.Chat.Print($"'{arg}' is out of range.");
                     }
                     return;
-                case hqName:
-                    this.configuration.hq = !this.configuration.hq;
-                    this.configuration.Save();
-                    PrintSetting($"{Name} {hqName}", this.configuration.hq);
-                    return;
                 case smartName:
                     this.configuration.smart = !this.configuration.smart;
                     this.configuration.Save();
@@ -153,15 +145,64 @@ namespace PennyPincher
             if (!this.configuration.alwaysOn && (!this.configuration.smart || !Retainer())) return;
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
             var i = 0;
-            if (this.configuration.hq && this.items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
-            {
+
+            // Load addon ptr from memory and get the name of the item im looking at
+            var toolTipPtr = pi.Framework.Gui.GetUiObjectByName("ItemDetail", 1) + 0x258;
+            var toolTipItemName = GetSeStringText(GetSeString(toolTipPtr));
+
+            // Checks for HQ symbol in item name
+            bool isCurrentItemHQ = toolTipItemName.Substring(toolTipItemName.Length - 1) == "";
+
+            if (isCurrentItemHQ) {
                 while (i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) i++;
                 if (i == listing.ItemListings.Count) return;
             }
+
             var price = listing.ItemListings[i].PricePerUnit - this.configuration.delta;
             Clipboard.SetText(price.ToString());
-            if (this.configuration.verbose) this.pi.Framework.Gui.Chat.Print($"{price} copied to clipboard.");
+            if (this.configuration.verbose) {
+                if (isCurrentItemHQ)
+                    this.pi.Framework.Gui.Chat.Print($"[HQ] {price} copied to clipboard.");
+                else
+                    this.pi.Framework.Gui.Chat.Print($"{price} copied to clipboard.");
+            }
             this.newRequest = false;
+        }
+
+        /// <summary>
+        /// Text from addon to SeString
+        /// </summary>
+        /// <param name="textPtr">addon ptr</param>
+        /// <returns></returns>
+        private SeString GetSeString(IntPtr textPtr) {
+            var size = 0;
+            while (Marshal.ReadByte(textPtr, size) != 0)
+                size++;
+
+            var bytes = new byte[size];
+            Marshal.Copy(textPtr, bytes, 0, size);
+
+            return GetSeString(bytes);
+        }
+
+        /// <summary>
+        /// SeString to string
+        /// </summary>
+        /// <param name="sestring"></param>
+        /// <returns></returns>
+        private string GetSeStringText(SeString sestring) {
+            var pieces = sestring.Payloads.OfType<TextPayload>().Select(t => t.Text);
+            var text = string.Join("", pieces).Replace('\n', ' ').Trim();
+            return text;
+        }
+
+        /// <summary>
+        /// Parse bytes to SeString
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <returns></returns>
+        private SeString GetSeString(byte[] bytes) {
+            return pi.SeStringManager.Parse(bytes);
         }
     }
 }
