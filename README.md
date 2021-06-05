@@ -32,4 +32,6 @@ This both speeds up the process and reduces room for error from typos/missing di
 |`/penny verbose`|Toggles whether to print to chat when a price to copied.|enabled|
 |`/penny help`|Displays the list of commands.||
 
-Note that `/penny alwayson` has been renamed to `/penny` as of version 1.1.0.0
+## Changelog
+1.2.0.0: `/penny hq` has been replaced with smarter behavior (checking if the item you're listing is HQ or not)
+1.1.0.0: `/penny alwayson` has been renamed to `/penny`
