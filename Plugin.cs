@@ -4,7 +4,6 @@ using Dalamud.Game.Network.Structures;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Plugin;
-using Lumina.Excel.GeneratedSheets;
 using System;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -23,7 +22,6 @@ namespace PennyPincher
         private const string verboseName = "verbose";
 
         private DalamudPluginInterface pi;
-        private Lumina.Excel.ExcelSheet<Item> items;
         private Configuration configuration;
         private bool newRequest;
 
@@ -38,7 +36,6 @@ namespace PennyPincher
             this.configuration = this.pi.GetPluginConfig() as Configuration ?? new Configuration();
             this.configuration.Initialize(this.pi);
 
-            this.items = this.pi.Data.GetExcelSheet<Item>();
             this.newRequest = false;
 
             this.pi.CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
@@ -149,22 +146,15 @@ namespace PennyPincher
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
             var i = 0;
 
-            // Load addon ptr from memory
+            // Load addon ptr from memory and get the name of the item im looking at
             var toolTipPtr = pi.Framework.Gui.GetUiObjectByName("ItemDetail", 1) + 0x258;
             var toolTipItemName = GetSeStringText(GetSeString(toolTipPtr));
-            bool isCurrentItemHQ = false;
 
             // Checks for HQ symbol in item name
-            if (toolTipItemName.Substring(toolTipItemName.Length - 1) == "")
-                isCurrentItemHQ = true;
-            else
-                isCurrentItemHQ = false;
+            bool isCurrentItemHQ = toolTipItemName.Substring(toolTipItemName.Length - 1) == "";
 
             if (isCurrentItemHQ) {
                 while (i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) i++;
-                if (i == listing.ItemListings.Count) return;
-            } else {
-                while (i < listing.ItemListings.Count && listing.ItemListings[i].IsHq) i++;
                 if (i == listing.ItemListings.Count) return;
             }
 
