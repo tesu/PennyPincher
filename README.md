@@ -33,5 +33,5 @@ This both speeds up the process and reduces room for error from typos/missing di
 |`/penny help`|Displays the list of commands.||
 
 ## Changelog
-1.2.0.0: `/penny hq` has been replaced with smarter behavior (checking if the item you're listing is HQ or not)
+1.2.0.0: `/penny hq` has been replaced with smarter behavior (checking if the item you're listing is HQ or not)  
 1.1.0.0: `/penny alwayson` has been renamed to `/penny`
