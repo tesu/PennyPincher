@@ -12,7 +12,7 @@ The usual workflow for this is the following:
 6. Update your item's price with the number you noted
 7. Confirm your new price
 
-This plugin eliminates the mental notekeeping steps in the middle by automatically copying the number you want onto your clipboard when you open the current listings window (suppots HQ items aswell).
+This plugin eliminates the mental notekeeping steps in the middle by automatically copying the number you want (with automatic HQ support) onto your clipboard when you open the current listings window.
 
 Therefore, your new workflow becomes this:
 1. Open up the adjust price menu for the item you're undercutting
