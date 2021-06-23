@@ -145,26 +145,29 @@ namespace PennyPincher
             if (!this.configuration.alwaysOn && (!this.configuration.smart || !Retainer())) return;
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
             var i = 0;
+            bool isCurrentItemHQ = false;
 
-            // Load addon ptr from memory and get the name of the item im looking at
-            var toolTipPtr = pi.Framework.Gui.GetUiObjectByName("ItemDetail", 1) + 0x258;
-            var toolTipItemName = GetSeStringText(GetSeString(toolTipPtr));
+            if (Retainer())
+            {
+                // Load addon ptr from memory and get the name of the item im looking at
+                var toolTipPtr = pi.Framework.Gui.GetUiObjectByName("ItemDetail", 1) + 0x258;
+                var toolTipItemName = GetSeStringText(GetSeString(toolTipPtr));
 
-            // Checks for HQ symbol in item name
-            bool isCurrentItemHQ = toolTipItemName.Substring(toolTipItemName.Length - 1) == "";
+                // Checks for HQ symbol in item name
+                isCurrentItemHQ = toolTipItemName.Substring(toolTipItemName.Length - 1) == "";
 
-            if (isCurrentItemHQ) {
-                while (i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) i++;
-                if (i == listing.ItemListings.Count) return;
+                if (isCurrentItemHQ)
+                {
+                    while (i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) i++;
+                    if (i == listing.ItemListings.Count) return;
+                }
             }
 
             var price = listing.ItemListings[i].PricePerUnit - this.configuration.delta;
             Clipboard.SetText(price.ToString());
             if (this.configuration.verbose) {
-                if (isCurrentItemHQ)
-                    this.pi.Framework.Gui.Chat.Print($"[HQ] {price} copied to clipboard.");
-                else
-                    this.pi.Framework.Gui.Chat.Print($"{price} copied to clipboard.");
+                var hqPrefix = isCurrentItemHQ ? "[HQ] " : "";
+                this.pi.Framework.Gui.Chat.Print(hqPrefix + $"{price} copied to clipboard.");
             }
             this.newRequest = false;
         }
