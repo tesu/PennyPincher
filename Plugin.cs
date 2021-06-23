@@ -18,6 +18,7 @@ namespace PennyPincher
         private const string commandName = "/penny";
         private const string helpName = "help";
         private const string deltaName = "delta";
+        private const string modName = "mod";
         private const string smartName = "smart";
         private const string verboseName = "verbose";
 
@@ -83,6 +84,7 @@ namespace PennyPincher
                 case helpName:
                     this.pi.Framework.Gui.Chat.Print($"{commandName}: Toggles whether {Name} is always on (supersedes {smartName})");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {modName} <mod>: Adjusts base price by subtracting <price> % <mod> from <price> before subtracting <delta>. This makes the last digits of your posted prices consistent.");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically copy when you're using a retainer");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether {Name} prints whenever it copies to clipboard");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {helpName}: Displays this help page");
@@ -92,6 +94,28 @@ namespace PennyPincher
                     this.configuration.Save();
                     PrintSetting($"{Name}", this.configuration.alwaysOn);
                     this.pi.Framework.Gui.Chat.Print($"Note that \"{commandName} alwayson\" has been renamed to \"{commandName}\".");
+                    return;
+                case modName:
+                    if (argArray.Length < 2)
+                    {
+                        this.pi.Framework.Gui.Chat.Print($"{commandName} {modName} missing <mod> argument.");
+                        return;
+                    }
+                    var a = argArray[1];
+                    try
+                    {
+                        this.configuration.mod = int.Parse(a);
+                        this.configuration.Save();
+                        this.pi.Framework.Gui.Chat.Print($"{Name} {modName} set to {this.configuration.mod}.");
+                    }
+                    catch (FormatException)
+                    {
+                        this.pi.Framework.Gui.Chat.Print($"Unable to read '{a}' as an integer.");
+                    }
+                    catch (OverflowException)
+                    {
+                        this.pi.Framework.Gui.Chat.Print($"'{a}' is out of range.");
+                    }
                     return;
                 case deltaName:
                     if (argArray.Length < 2)
@@ -163,7 +187,7 @@ namespace PennyPincher
                 }
             }
 
-            var price = listing.ItemListings[i].PricePerUnit - this.configuration.delta;
+            var price = listing.ItemListings[i].PricePerUnit - (listing.ItemListings[i].PricePerUnit % this.configuration.mod) - this.configuration.delta;
             Clipboard.SetText(price.ToString());
             if (this.configuration.verbose) {
                 var hqPrefix = isCurrentItemHQ ? "[HQ] " : "";
