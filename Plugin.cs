@@ -18,6 +18,7 @@ namespace PennyPincher
         private const string commandName = "/penny";
         private const string helpName = "help";
         private const string deltaName = "delta";
+        private const string hqName = "hq";
         private const string modName = "mod";
         private const string smartName = "smart";
         private const string verboseName = "verbose";
@@ -84,6 +85,7 @@ namespace PennyPincher
                 case helpName:
                     this.pi.Framework.Gui.Chat.Print($"{commandName}: Toggles whether {Name} is always on (supersedes {smartName})");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {hqName}: Toggles whether {Name} should only undercut HQ items when you're listing an HQ item");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {modName} <mod>: Adjusts base price by subtracting <price> % <mod> from <price> before subtracting <delta>. This makes the last digits of your posted prices consistent.");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically copy when you're using a retainer");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether {Name} prints whenever it copies to clipboard");
@@ -139,6 +141,11 @@ namespace PennyPincher
                         this.pi.Framework.Gui.Chat.Print($"'{arg}' is out of range.");
                     }
                     return;
+                case hqName:
+                    this.configuration.hq = !this.configuration.hq;
+                    this.configuration.Save();
+                    PrintSetting($"{Name} {hqName}", this.configuration.hq);
+                    return;
                 case smartName:
                     this.configuration.smart = !this.configuration.smart;
                     this.configuration.Save();
@@ -171,14 +178,13 @@ namespace PennyPincher
             var i = 0;
             bool isCurrentItemHQ = false;
 
-            if (Retainer())
+            if (this.configuration.hq && Retainer())
             {
-                // Load addon ptr from memory and get the name of the item im looking at
+                // Load addon ptr from memory and get the name of the item being listed
                 var toolTipPtr = pi.Framework.Gui.GetUiObjectByName("ItemDetail", 1) + 0x258;
-                var toolTipItemName = GetSeStringText(GetSeString(toolTipPtr));
 
                 // Checks for HQ symbol in item name
-                isCurrentItemHQ = toolTipItemName.Substring(toolTipItemName.Length - 1) == "";
+                isCurrentItemHQ = GetSeStringText(GetSeString(toolTipPtr)).Contains("");
 
                 if (isCurrentItemHQ)
                 {
