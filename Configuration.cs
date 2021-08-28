@@ -13,6 +13,7 @@ namespace PennyPincher
         public int delta { get; set; } = 1;
         public bool hq { get; set; } = true;
         public int mod { get; set; } = 1;
+        public int min { get; set; } = 1;
         public bool smart { get; set; } = true;
         public bool verbose { get; set; } = true;
 

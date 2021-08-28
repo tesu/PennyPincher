@@ -20,6 +20,7 @@ namespace PennyPincher
         private const string deltaName = "delta";
         private const string hqName = "hq";
         private const string modName = "mod";
+        private const string minName = "min";
         private const string smartName = "smart";
         private const string verboseName = "verbose";
 
@@ -87,6 +88,7 @@ namespace PennyPincher
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {hqName}: Toggles whether {Name} should only undercut HQ items when you're listing an HQ item");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {modName} <mod>: Adjusts base price by subtracting <price> % <mod> from <price> before subtracting <delta>. This makes the last digits of your posted prices consistent.");
+                    this.pi.Framework.Gui.Chat.Print($"{commandName} {minName} <min>: Sets a minimum value that <price> will not go lower than. <min> cannot be lower than 1.");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically copy when you're using a retainer");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether {Name} prints whenever it copies to clipboard");
                     this.pi.Framework.Gui.Chat.Print($"{commandName} {helpName}: Displays this help page");
@@ -141,6 +143,36 @@ namespace PennyPincher
                         this.pi.Framework.Gui.Chat.Print($"'{arg}' is out of range.");
                     }
                     return;
+                case minName:
+                    if (argArray.Length < 2)
+                    {
+                        this.pi.Framework.Gui.Chat.Print($"{commandName} {minName} <min> is missing its <min> argument.");
+                        return;
+                    }
+
+                    var minArg = argArray[1];
+
+                    try
+                    {
+                        var minArgVal = int.Parse(argArray[1]);
+                        if (minArgVal < 1)
+                        {
+                            this.pi.Framework.Gui.Chat.Print($"{commandName} {minName} <min> cannot be lower than 1.");
+                            return;
+                        }
+                        this.configuration.min = minArgVal;
+                        this.configuration.Save();
+                        this.pi.Framework.Gui.Chat.Print($"{Name} {minName} set to {this.configuration.min}.");
+                    }
+                    catch (FormatException)
+                    {
+                        this.pi.Framework.Gui.Chat.Print($"Unable to read '{minArg}' as an integer.");
+                    }
+                    catch (OverflowException)
+                    {
+                        this.pi.Framework.Gui.Chat.Print($"'{minArg}' is out of range.");
+                    }
+                    return;
                 case hqName:
                     this.configuration.hq = !this.configuration.hq;
                     this.configuration.Save();
@@ -193,7 +225,11 @@ namespace PennyPincher
                 }
             }
 
+            // Get item price
             var price = listing.ItemListings[i].PricePerUnit - (listing.ItemListings[i].PricePerUnit % this.configuration.mod) - this.configuration.delta;
+            // Make sure price is not below min
+            price = Math.Max(price, this.configuration.min);
+
             Clipboard.SetText(price.ToString());
             if (this.configuration.verbose) {
                 var hqPrefix = isCurrentItemHQ ? "[HQ] " : "";
