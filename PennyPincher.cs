@@ -231,6 +231,7 @@
             }
 
             var price = listing.ItemListings[i].PricePerUnit - (listing.ItemListings[i].PricePerUnit % this.configuration.mod) - this.configuration.delta;
+            price = Math.Max(price, this.configuration.min);
             ImGui.SetClipboardText(price.ToString());
             if (this.configuration.verbose)
             {
