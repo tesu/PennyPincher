@@ -30,11 +30,13 @@ This both speeds up the process and reduces room for error from typos/missing di
 |`/penny delta <delta>`|Sets how much to undercut by. A delta of 0 would copy the same price as the lowest offer, and a delta of 100 would copy 100 under the lowest offer. Negative numbers work exactly how you would expect, though it's not obvious to me how this could be useful.|1|
 |`/penny hq`|Toggles whether to only undercut HQ items when listing an HQ item.|enabled|
 |`/penny mod <mod>`|Adjusts base price by subtracting `<price> % <mod>` from `<price>` before subtracting `<delta>`. This makes the last digits of your posted prices consistent.|1|
+|`/penny min <min>`|Sets a minimum value that <price> will not go lower than. <min> cannot be lower than 1.|1|
 |`/penny smart`|Toggles whether to always copy prices when accessing the marketboard from a retainer.|enabled|
 |`/penny verbose`|Toggles whether to print to chat when a price to copied.|enabled|
 |`/penny help`|Displays the list of commands.||
 
 ## Changelog
+1.2.0.2: `/penny min` added
 1.2.0.1: `/penny mod` added, `/penny hq` is back (defaults to true so the smarter behavior is opt-out)  
 1.2.0.0: `/penny hq` has been replaced with smarter behavior (checking if the item you're listing is HQ or not)  
 1.1.0.0: `/penny alwayson` has been renamed to `/penny`

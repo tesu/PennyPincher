@@ -19,6 +19,8 @@
 
         public bool hq { get; set; } = true;
 
+        public int min { get; set; } = 1;
+
         public int mod { get; set; } = 1;
 
         public bool smart { get; set; } = true;

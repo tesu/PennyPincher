@@ -19,6 +19,7 @@
         private const string helpName = "help";
         private const string deltaName = "delta";
         private const string hqName = "hq";
+        private const string minName = "min";
         private const string modName = "mod";
         private const string smartName = "smart";
         private const string verboseName = "verbose";
@@ -97,6 +98,7 @@
                     this.f.Gui.Chat.Print($"{commandName}: Toggles whether {Name} is always on (supersedes {smartName})");
                     this.f.Gui.Chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>");
                     this.f.Gui.Chat.Print($"{commandName} {hqName}: Toggles whether {Name} should only undercut HQ items when you're listing an HQ item");
+                    this.f.Gui.Chat.Print($"{commandName} {minName} <min>: Sets a minimum value to be copied. <min> cannot be below 1.");
                     this.f.Gui.Chat.Print($"{commandName} {modName} <mod>: Adjusts base price by subtracting <price> % <mod> from <price> before subtracting <delta>. This makes the last digits of your posted prices consistent.");
                     this.f.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically copy when you're using a retainer");
                     this.f.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether {Name} prints whenever it copies to clipboard");
@@ -108,6 +110,37 @@
                     this.PrintSetting($"{Name}", this.configuration.alwaysOn);
                     this.f.Gui.Chat.Print($"Note that \"{commandName} alwayson\" has been renamed to \"{commandName}\".");
                     return;
+                case minName:
+                    if (argArray.Length < 2)
+                    {
+                        this.f.Gui.Chat.Print($"{commandName} {minName} missing <min> argument.");
+                        return;
+                    }
+
+                    var minArg = argArray[1];
+                    try
+                    {
+                        var minArgVal = int.Parse(minArg);
+                        if (minArgVal < 1)
+                        {
+                            this.f.Gui.Chat.Print($"{commandName} {minName} <min> cannot be lower than 1.");
+                            return;
+                        }
+
+                        this.configuration.min = minArgVal;
+                        this.configuration.Save();
+                        this.f.Gui.Chat.Print($"{Name} {minName} set to {this.configuration.min}.");
+                    }
+                    catch (FormatException)
+                    {
+                        this.f.Gui.Chat.Print($"Unable to read '{minArg}' as an integer.");
+                    }
+                    catch (OverflowException)
+                    {
+                        this.f.Gui.Chat.Print($"'{minArg}' is out of range.");
+                    }
+
+                    return;
                 case modName:
                     if (argArray.Length < 2)
                     {
@@ -115,20 +148,20 @@
                         return;
                     }
 
-                    var a = argArray[1];
+                    var modArg = argArray[1];
                     try
                     {
-                        this.configuration.mod = int.Parse(a);
+                        this.configuration.mod = int.Parse(modArg);
                         this.configuration.Save();
                         this.f.Gui.Chat.Print($"{Name} {modName} set to {this.configuration.mod}.");
                     }
                     catch (FormatException)
                     {
-                        this.f.Gui.Chat.Print($"Unable to read '{a}' as an integer.");
+                        this.f.Gui.Chat.Print($"Unable to read '{modArg}' as an integer.");
                     }
                     catch (OverflowException)
                     {
-                        this.f.Gui.Chat.Print($"'{a}' is out of range.");
+                        this.f.Gui.Chat.Print($"'{modArg}' is out of range.");
                     }
 
                     return;
