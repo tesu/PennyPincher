@@ -2,7 +2,7 @@
     "Author": "tesu",
     "Name": "Penny Pincher",
     "Punchline": "Copies 1 below the cheapest offer to your clipboard when you check marketboard prices",
-    "Description": "This plugin eliminates the mental notekeeping steps in the middle of your undercutting workflow by automatically copying the number you want onto your clipboard when you open the current listings window.\n\nView all available options through \"/penny help\"",
+    "Description": "This plugin eliminates the mental notekeeping steps in the middle of your undercutting workflow by automatically copying the number you want onto your clipboard when you open the current listings window.",
     "InternalName": "PennyPincher",
     "AssemblyVersion": "1.3.0.0",
     "RepoUrl": "https://github.com/tesu/PennyPincher",
@@ -10,6 +10,6 @@
     "Tags": [ "marketboard", "undercut", "penny", "clipboard" ],
     "ImageUrls": [],
     "IconUrl": "https://github.com/tesu/PennyPincher/raw/master/images/icon.png",
-    "Changelog": "Initial 4.0 release.",
+    "Changelog": "Initial APIv4 release.",
     "DalamudApiLevel": 4
 }

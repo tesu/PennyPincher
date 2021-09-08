@@ -6,14 +6,15 @@
     using Dalamud.Data;
     using Dalamud.Game;
     using Dalamud.Game.Command;
-    using Dalamud.Game.Internal;
-    using Dalamud.Game.Internal.Network;
+    using Dalamud.Game.Gui;
+    using Dalamud.Game.Network;
     using Dalamud.Game.Network.Structures;
+    using Dalamud.Logging;
     using Dalamud.Plugin;
     using ImGuiNET;
     using Lumina.Excel.GeneratedSheets;
 
-    public class PennyPincher
+    public class PennyPincher : IDalamudPlugin
     {
         private const string commandName = "/penny";
         private const string helpName = "help";
@@ -25,20 +26,22 @@
         private const string verboseName = "verbose";
 
         private DalamudPluginInterface pi;
+        private ChatGui chat;
         private CommandManager c;
         private DataManager d;
-        private Framework f;
+        private GameNetwork gn;
         private Configuration configuration;
         private Lumina.Excel.ExcelSheet<Item> items;
         private bool newRequest;
         private GetFilePointer getFilePtr;
 
-        public PennyPincher(DalamudPluginInterface pluginInterface, CommandManager commands, DataManager data, Framework framework, SigScanner sigScanner)
+        public PennyPincher(DalamudPluginInterface pluginInterface, ChatGui chat, CommandManager commands, DataManager data, GameNetwork gameNetwork, SigScanner sigScanner)
         {
             this.pi = pluginInterface;
+            this.chat = chat;
             this.c = commands;
             this.d = data;
-            this.f = framework;
+            this.gn = gameNetwork;
 
             this.configuration = this.pi.GetPluginConfig() as Configuration ?? new Configuration();
             this.configuration.Initialize(this.pi);
@@ -47,10 +50,10 @@
 
             this.c.AddHandler(commandName, new CommandInfo(this.OnCommand)
             {
-                HelpMessage = $"Toggles {Name}. {commandName} {helpName} for additional options",
+                HelpMessage = $"Toggles {this.Name}. {commandName} {helpName} for additional options",
             });
 
-            this.f.Network.OnNetworkMessage += this.OnNetworkEvent;
+            this.gn.NetworkMessage += this.OnNetworkEvent;
 
             try
             {
@@ -67,18 +70,18 @@
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate IntPtr GetFilePointer(byte index);
 
-        public static string Name => "Penny Pincher";
+        public string Name => "Penny Pincher";
 
         public void Dispose()
         {
-            this.f.Network.OnNetworkMessage -= this.OnNetworkEvent;
+            this.gn.NetworkMessage -= this.OnNetworkEvent;
             this.c.RemoveHandler(commandName);
             this.pi.Dispose();
         }
 
         private void PrintSetting(string name, bool setting)
         {
-            this.f.Gui.Chat.Print(name + (setting ? " enabled." : " disabled."));
+            this.chat.Print(name + (setting ? " enabled." : " disabled."));
         }
 
         private void OnCommand(string command, string args)
@@ -87,7 +90,7 @@
             {
                 this.configuration.alwaysOn = !this.configuration.alwaysOn;
                 this.configuration.Save();
-                this.PrintSetting($"{Name}", this.configuration.alwaysOn);
+                this.PrintSetting($"{this.Name}", this.configuration.alwaysOn);
                 return;
             }
 
@@ -95,25 +98,24 @@
             switch (argArray[0])
             {
                 case helpName:
-                    this.f.Gui.Chat.Print($"{commandName}: Toggles whether {Name} is always on (supersedes {smartName})");
-                    this.f.Gui.Chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>");
-                    this.f.Gui.Chat.Print($"{commandName} {hqName}: Toggles whether {Name} should only undercut HQ items when you're listing an HQ item");
-                    this.f.Gui.Chat.Print($"{commandName} {minName} <min>: Sets a minimum value to be copied. <min> cannot be below 1.");
-                    this.f.Gui.Chat.Print($"{commandName} {modName} <mod>: Adjusts base price by subtracting <price> % <mod> from <price> before subtracting <delta>. This makes the last digits of your posted prices consistent.");
-                    this.f.Gui.Chat.Print($"{commandName} {smartName}: Toggles whether {Name} should automatically copy when you're using a retainer");
-                    this.f.Gui.Chat.Print($"{commandName} {verboseName}: Toggles whether {Name} prints whenever it copies to clipboard");
-                    this.f.Gui.Chat.Print($"{commandName} {helpName}: Displays this help page");
+                    this.chat.Print($"{commandName}: Toggles whether {this.Name} is always on (supersedes {smartName})");
+                    this.chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>");
+                    this.chat.Print($"{commandName} {hqName}: Toggles whether {this.Name} should only undercut HQ items when you're listing an HQ item");
+                    this.chat.Print($"{commandName} {minName} <min>: Sets a minimum value to be copied. <min> cannot be below 1.");
+                    this.chat.Print($"{commandName} {modName} <mod>: Adjusts base price by subtracting <price> % <mod> from <price> before subtracting <delta>. This makes the last digits of your posted prices consistent.");
+                    this.chat.Print($"{commandName} {smartName}: Toggles whether {this.Name} should automatically copy when you're using a retainer");
+                    this.chat.Print($"{commandName} {verboseName}: Toggles whether {this.Name} prints whenever it copies to clipboard");
+                    this.chat.Print($"{commandName} {helpName}: Displays this help page");
                     return;
                 case "alwayson":
                     this.configuration.alwaysOn = !this.configuration.alwaysOn;
                     this.configuration.Save();
-                    this.PrintSetting($"{Name}", this.configuration.alwaysOn);
-                    this.f.Gui.Chat.Print($"Note that \"{commandName} alwayson\" has been renamed to \"{commandName}\".");
+                    this.PrintSetting($"{this.Name}", this.configuration.alwaysOn);
                     return;
                 case minName:
                     if (argArray.Length < 2)
                     {
-                        this.f.Gui.Chat.Print($"{commandName} {minName} missing <min> argument.");
+                        this.chat.Print($"{commandName} {minName} missing <min> argument.");
                         return;
                     }
 
@@ -123,28 +125,28 @@
                         var minArgVal = int.Parse(minArg);
                         if (minArgVal < 1)
                         {
-                            this.f.Gui.Chat.Print($"{commandName} {minName} <min> cannot be lower than 1.");
+                            this.chat.Print($"{commandName} {minName} <min> cannot be lower than 1.");
                             return;
                         }
 
                         this.configuration.min = minArgVal;
                         this.configuration.Save();
-                        this.f.Gui.Chat.Print($"{Name} {minName} set to {this.configuration.min}.");
+                        this.chat.Print($"{this.Name} {minName} set to {this.configuration.min}.");
                     }
                     catch (FormatException)
                     {
-                        this.f.Gui.Chat.Print($"Unable to read '{minArg}' as an integer.");
+                        this.chat.Print($"Unable to read '{minArg}' as an integer.");
                     }
                     catch (OverflowException)
                     {
-                        this.f.Gui.Chat.Print($"'{minArg}' is out of range.");
+                        this.chat.Print($"'{minArg}' is out of range.");
                     }
 
                     return;
                 case modName:
                     if (argArray.Length < 2)
                     {
-                        this.f.Gui.Chat.Print($"{commandName} {modName} missing <mod> argument.");
+                        this.chat.Print($"{commandName} {modName} missing <mod> argument.");
                         return;
                     }
 
@@ -153,22 +155,22 @@
                     {
                         this.configuration.mod = int.Parse(modArg);
                         this.configuration.Save();
-                        this.f.Gui.Chat.Print($"{Name} {modName} set to {this.configuration.mod}.");
+                        this.chat.Print($"{this.Name} {modName} set to {this.configuration.mod}.");
                     }
                     catch (FormatException)
                     {
-                        this.f.Gui.Chat.Print($"Unable to read '{modArg}' as an integer.");
+                        this.chat.Print($"Unable to read '{modArg}' as an integer.");
                     }
                     catch (OverflowException)
                     {
-                        this.f.Gui.Chat.Print($"'{modArg}' is out of range.");
+                        this.chat.Print($"'{modArg}' is out of range.");
                     }
 
                     return;
                 case deltaName:
                     if (argArray.Length < 2)
                     {
-                        this.f.Gui.Chat.Print($"{commandName} {deltaName} <delta> is missing its <delta> argument.");
+                        this.chat.Print($"{commandName} {deltaName} <delta> is missing its <delta> argument.");
                         return;
                     }
 
@@ -177,35 +179,35 @@
                     {
                         this.configuration.delta = int.Parse(arg);
                         this.configuration.Save();
-                        this.f.Gui.Chat.Print($"{Name} {deltaName} set to {this.configuration.delta}.");
+                        this.chat.Print($"{this.Name} {deltaName} set to {this.configuration.delta}.");
                     }
                     catch (FormatException)
                     {
-                        this.f.Gui.Chat.Print($"Unable to read '{arg}' as an integer.");
+                        this.chat.Print($"Unable to read '{arg}' as an integer.");
                     }
                     catch (OverflowException)
                     {
-                        this.f.Gui.Chat.Print($"'{arg}' is out of range.");
+                        this.chat.Print($"'{arg}' is out of range.");
                     }
 
                     return;
                 case hqName:
                     this.configuration.hq = !this.configuration.hq;
                     this.configuration.Save();
-                    this.PrintSetting($"{Name} {hqName}", this.configuration.hq);
+                    this.PrintSetting($"{this.Name} {hqName}", this.configuration.hq);
                     return;
                 case smartName:
                     this.configuration.smart = !this.configuration.smart;
                     this.configuration.Save();
-                    this.PrintSetting($"{Name} {smartName}", this.configuration.smart);
+                    this.PrintSetting($"{this.Name} {smartName}", this.configuration.smart);
                     return;
                 case verboseName:
                     this.configuration.verbose = !this.configuration.verbose;
                     this.configuration.Save();
-                    this.PrintSetting($"{Name} {verboseName}", this.configuration.verbose);
+                    this.PrintSetting($"{this.Name} {verboseName}", this.configuration.verbose);
                     return;
                 default:
-                    this.f.Gui.Chat.Print($"Unknown subcommand used. Run {commandName} {helpName} for valid subcommands.");
+                    this.chat.Print($"Unknown subcommand used. Run {commandName} {helpName} for valid subcommands.");
                     return;
             }
         }
@@ -235,8 +237,7 @@
             ImGui.SetClipboardText(price.ToString());
             if (this.configuration.verbose)
             {
-                var hqPrefix = this.configuration.hq ? "[HQ] " : string.Empty;
-                this.pi.Framework.Gui.Chat.Print(hqPrefix + $"{price} copied to clipboard.");
+                this.chat.Print((this.configuration.hq ? "[HQ] " : string.Empty) + $"{price:n0} copied to clipboard.");
             }
 
             this.newRequest = false;
