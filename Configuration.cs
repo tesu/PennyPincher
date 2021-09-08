@@ -17,7 +17,7 @@
 
         public int delta { get; set; } = 1;
 
-        public bool hq { get; set; } = true;
+        public bool hq { get; set; } = false;
 
         public int min { get; set; } = 1;
 
