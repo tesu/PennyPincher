@@ -102,15 +102,15 @@ namespace PennyPincher
             ImGui.SetNextWindowSize(new Num.Vector2(600, 600), ImGuiCond.FirstUseEver);
             ImGui.Begin($"{Name} Config", ref _config);
             
+            ImGui.InputInt("Delta", ref configDelta);
+            ImGui.TextWrapped("Sets the undercutting amount to be <delta>.");
+            
             ImGui.InputInt("Minimum Price", ref configMin);
             ImGui.TextWrapped("Sets a minimum value to be copied. <min> cannot be below 1.");
             
             ImGui.InputInt("Mod", ref configMod);
             ImGui.TextWrapped("Adjusts base price by subtracting <price> % <mod> from <price> before subtracting <delta>.\nThis makes the last digits of your posted prices consistent.");
-            
-            ImGui.InputInt("Delta", ref configDelta);
-            ImGui.TextWrapped("Sets the undercutting amount to be <delta>.");
-            
+
             ImGui.Separator();
             
             ImGui.Checkbox($"Always On: Toggles whether {Name} is always on (supersedes 'Smart Mode')", ref configAlwaysOn);
@@ -131,10 +131,10 @@ namespace PennyPincher
 
         private void LoadConfig()
         {
+            configDelta = configuration.delta;
             configMin = configuration.min;
             configMod = configuration.mod;
-            configDelta = configuration.delta;
-            
+
             configAlwaysOn = configuration.alwaysOn;
             configHq = configuration.hq;
             configSmart = configuration.smart;
@@ -149,10 +149,10 @@ namespace PennyPincher
                 return;
             }
             
+            configuration.delta = configDelta;
             configuration.min = configMin;
             configuration.mod = configMod;
-            configuration.delta = configDelta;
-            
+
             configuration.alwaysOn = configAlwaysOn;
             configuration.hq = configHq;
             configuration.smart = configSmart;
