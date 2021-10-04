@@ -146,7 +146,7 @@ namespace PennyPincher
             if (configMin < 1)
             {
                 Chat.Print($"{Name}: <min> cannot be lower than 1.");
-                return;
+                configMin = 1;
             }
             
             configuration.delta = configDelta;
