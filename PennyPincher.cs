@@ -1,68 +1,72 @@
-﻿namespace PennyPincher
-{
-    using System;
-    using System.Linq;
-    using System.Runtime.InteropServices;
-    using Dalamud.Data;
-    using Dalamud.Game;
-    using Dalamud.Game.Command;
-    using Dalamud.Game.Gui;
-    using Dalamud.Game.Network;
-    using Dalamud.Game.Network.Structures;
-    using Dalamud.Logging;
-    using Dalamud.Plugin;
-    using ImGuiNET;
-    using Lumina.Excel.GeneratedSheets;
+﻿using System;
+using System.Linq;
+using System.Runtime.InteropServices;
+using Dalamud.Data;
+using Dalamud.Game;
+using Dalamud.Game.Command;
+using Dalamud.Game.Gui;
+using Dalamud.Game.Network;
+using Dalamud.Game.Network.Structures;
+using Dalamud.IoC;
+using Dalamud.Logging;
+using Dalamud.Plugin;
+using ImGuiNET;
+using Lumina.Excel.GeneratedSheets;
+using Num = System.Numerics;
 
+namespace PennyPincher
+{
     public class PennyPincher : IDalamudPlugin
     {
+        [PluginService] public static DalamudPluginInterface PluginInterface { get; private set; } = null!;
+        [PluginService] public static CommandManager CommandManager { get; private set; } = null!;
+        [PluginService] public static ChatGui Chat { get; private set; } = null!;
+        [PluginService] public static DataManager Data { get; private set; } = null!;
+        [PluginService] public static GameNetwork GameNetwork { get; private set; } = null!;
+        [PluginService] public static SigScanner SigScanner { get; private set; } = null!;
+        
         private const string commandName = "/penny";
-        private const string helpName = "help";
-        private const string deltaName = "delta";
-        private const string hqName = "hq";
-        private const string minName = "min";
-        private const string modName = "mod";
-        private const string smartName = "smart";
-        private const string verboseName = "verbose";
+        
+        private int configMin;
+        private int configMod;
+        private int configDelta;
+        private bool configAlwaysOn;
+        private bool configHq;
+        private bool configSmart;
+        private bool configVerbose;
 
-        private DalamudPluginInterface pi;
-        private ChatGui chat;
-        private CommandManager c;
-        private DataManager d;
-        private GameNetwork gn;
+        private bool _config;
         private Configuration configuration;
         private Lumina.Excel.ExcelSheet<Item> items;
         private bool newRequest;
         private GetFilePointer getFilePtr;
 
-        public PennyPincher(DalamudPluginInterface pluginInterface, ChatGui chat, CommandManager commands, DataManager data, GameNetwork gameNetwork, SigScanner sigScanner)
+        public PennyPincher()
         {
-            this.pi = pluginInterface;
-            this.chat = chat;
-            this.c = commands;
-            this.d = data;
-            this.gn = gameNetwork;
+            configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+            LoadConfig();
+            
+            items = Data.GetExcelSheet<Item>();
+            newRequest = false;
 
-            this.configuration = this.pi.GetPluginConfig() as Configuration ?? new Configuration();
-            this.configuration.Initialize(this.pi);
-            this.items = this.d.GetExcelSheet<Item>();
-            this.newRequest = false;
+            PluginInterface.UiBuilder.Draw += DrawWindow;
+            PluginInterface.UiBuilder.OpenConfigUi += OpenConfigUi;
 
-            this.c.AddHandler(commandName, new CommandInfo(this.OnCommand)
+            CommandManager.AddHandler(commandName, new CommandInfo(Command)
             {
-                HelpMessage = $"Toggles {this.Name}. {commandName} {helpName} for additional options",
+                HelpMessage = $"Opens the {Name} config menu",
             });
 
-            this.gn.NetworkMessage += this.OnNetworkEvent;
+            GameNetwork.NetworkMessage += OnNetworkEvent;
 
             try
             {
-                var ptr = sigScanner.ScanText("E8 ?? ?? ?? ?? 48 85 C0 74 14 83 7B 44 00");
-                this.getFilePtr = Marshal.GetDelegateForFunctionPointer<GetFilePointer>(ptr);
+                var ptr = SigScanner.ScanText("E8 ?? ?? ?? ?? 48 85 C0 74 14 83 7B 44 00");
+                getFilePtr = Marshal.GetDelegateForFunctionPointer<GetFilePointer>(ptr);
             }
             catch (Exception e)
             {
-                this.getFilePtr = null;
+                getFilePtr = null;
                 PluginLog.LogError(e.ToString());
             }
         }
@@ -74,173 +78,118 @@
 
         public void Dispose()
         {
-            this.gn.NetworkMessage -= this.OnNetworkEvent;
-            this.c.RemoveHandler(commandName);
-            this.pi.Dispose();
+            GameNetwork.NetworkMessage -= OnNetworkEvent;
+            PluginInterface.UiBuilder.Draw -= DrawWindow;
+            PluginInterface.UiBuilder.OpenConfigUi -= OpenConfigUi;
+            CommandManager.RemoveHandler(commandName);
+            PluginInterface.Dispose();
+        }
+        
+        private void Command(string command, string arguments)
+        {
+            _config = true;
+        }
+        
+        private void OpenConfigUi()
+        {
+            _config = true;
         }
 
-        private void PrintSetting(string name, bool setting)
+        private void DrawWindow()
         {
-            this.chat.Print(name + (setting ? " enabled." : " disabled."));
-        }
+            if (!_config) return;
+            
+            ImGui.SetNextWindowSize(new Num.Vector2(600, 600), ImGuiCond.FirstUseEver);
+            ImGui.Begin($"{Name} Config", ref _config);
+            
+            ImGui.InputInt("Minimum Price", ref configMin);
+            ImGui.TextWrapped("Sets a minimum value to be copied. <min> cannot be below 1.");
+            
+            ImGui.InputInt("Mod", ref configMod);
+            ImGui.TextWrapped("Adjusts base price by subtracting <price> % <mod> from <price> before subtracting <delta>.\nThis makes the last digits of your posted prices consistent.");
+            
+            ImGui.InputInt("Delta", ref configDelta);
+            ImGui.TextWrapped("Sets the undercutting amount to be <delta>.");
+            
+            ImGui.Separator();
+            
+            ImGui.Checkbox($"Always On: Toggles whether {Name} is always on (supersedes 'Smart Mode')", ref configAlwaysOn);
+            ImGui.Checkbox($"HQ: Toggles whether {Name} should only undercut HQ items when you're listing an HQ item", ref configHq);
+            ImGui.Checkbox($"Smart Mode: Toggles whether {Name} should automatically copy when you're using a retainer", ref configSmart);
+            ImGui.Checkbox($"Verbose: Toggles whether {Name} prints whenever it copies to clipboard", ref configVerbose);
 
-        private void OnCommand(string command, string args)
-        {
-            if (args == string.Empty)
+            ImGui.Separator();
+            if (ImGui.Button("Save and Close Config"))
             {
-                this.configuration.alwaysOn = !this.configuration.alwaysOn;
-                this.configuration.Save();
-                this.PrintSetting($"{this.Name}", this.configuration.alwaysOn);
+                SaveConfig();
+
+                _config = false;
+            }
+
+            ImGui.End();
+        }
+
+        private void LoadConfig()
+        {
+            configMin = configuration.min;
+            configMod = configuration.mod;
+            configDelta = configuration.delta;
+            
+            configAlwaysOn = configuration.alwaysOn;
+            configHq = configuration.hq;
+            configSmart = configuration.smart;
+            configVerbose = configuration.verbose;
+        }
+
+        private void SaveConfig()
+        {
+            if (configMin < 1)
+            {
+                Chat.Print($"{Name}: <min> cannot be lower than 1.");
                 return;
             }
-
-            var argArray = args.Split(' ');
-            switch (argArray[0])
-            {
-                case helpName:
-                    this.chat.Print($"{commandName}: Toggles whether {this.Name} is always on (supersedes {smartName})");
-                    this.chat.Print($"{commandName} {deltaName} <delta>: Sets the undercutting amount to be <delta>");
-                    this.chat.Print($"{commandName} {hqName}: Toggles whether {this.Name} should only undercut HQ items when you're listing an HQ item");
-                    this.chat.Print($"{commandName} {minName} <min>: Sets a minimum value to be copied. <min> cannot be below 1.");
-                    this.chat.Print($"{commandName} {modName} <mod>: Adjusts base price by subtracting <price> % <mod> from <price> before subtracting <delta>. This makes the last digits of your posted prices consistent.");
-                    this.chat.Print($"{commandName} {smartName}: Toggles whether {this.Name} should automatically copy when you're using a retainer");
-                    this.chat.Print($"{commandName} {verboseName}: Toggles whether {this.Name} prints whenever it copies to clipboard");
-                    this.chat.Print($"{commandName} {helpName}: Displays this help page");
-                    return;
-                case "alwayson":
-                    this.configuration.alwaysOn = !this.configuration.alwaysOn;
-                    this.configuration.Save();
-                    this.PrintSetting($"{this.Name}", this.configuration.alwaysOn);
-                    return;
-                case minName:
-                    if (argArray.Length < 2)
-                    {
-                        this.chat.Print($"{commandName} {minName} missing <min> argument.");
-                        return;
-                    }
-
-                    var minArg = argArray[1];
-                    try
-                    {
-                        var minArgVal = int.Parse(minArg);
-                        if (minArgVal < 1)
-                        {
-                            this.chat.Print($"{commandName} {minName} <min> cannot be lower than 1.");
-                            return;
-                        }
-
-                        this.configuration.min = minArgVal;
-                        this.configuration.Save();
-                        this.chat.Print($"{this.Name} {minName} set to {this.configuration.min}.");
-                    }
-                    catch (FormatException)
-                    {
-                        this.chat.Print($"Unable to read '{minArg}' as an integer.");
-                    }
-                    catch (OverflowException)
-                    {
-                        this.chat.Print($"'{minArg}' is out of range.");
-                    }
-
-                    return;
-                case modName:
-                    if (argArray.Length < 2)
-                    {
-                        this.chat.Print($"{commandName} {modName} missing <mod> argument.");
-                        return;
-                    }
-
-                    var modArg = argArray[1];
-                    try
-                    {
-                        this.configuration.mod = int.Parse(modArg);
-                        this.configuration.Save();
-                        this.chat.Print($"{this.Name} {modName} set to {this.configuration.mod}.");
-                    }
-                    catch (FormatException)
-                    {
-                        this.chat.Print($"Unable to read '{modArg}' as an integer.");
-                    }
-                    catch (OverflowException)
-                    {
-                        this.chat.Print($"'{modArg}' is out of range.");
-                    }
-
-                    return;
-                case deltaName:
-                    if (argArray.Length < 2)
-                    {
-                        this.chat.Print($"{commandName} {deltaName} <delta> is missing its <delta> argument.");
-                        return;
-                    }
-
-                    var arg = argArray[1];
-                    try
-                    {
-                        this.configuration.delta = int.Parse(arg);
-                        this.configuration.Save();
-                        this.chat.Print($"{this.Name} {deltaName} set to {this.configuration.delta}.");
-                    }
-                    catch (FormatException)
-                    {
-                        this.chat.Print($"Unable to read '{arg}' as an integer.");
-                    }
-                    catch (OverflowException)
-                    {
-                        this.chat.Print($"'{arg}' is out of range.");
-                    }
-
-                    return;
-                case hqName:
-                    this.configuration.hq = !this.configuration.hq;
-                    this.configuration.Save();
-                    this.PrintSetting($"{this.Name} {hqName}", this.configuration.hq);
-                    return;
-                case smartName:
-                    this.configuration.smart = !this.configuration.smart;
-                    this.configuration.Save();
-                    this.PrintSetting($"{this.Name} {smartName}", this.configuration.smart);
-                    return;
-                case verboseName:
-                    this.configuration.verbose = !this.configuration.verbose;
-                    this.configuration.Save();
-                    this.PrintSetting($"{this.Name} {verboseName}", this.configuration.verbose);
-                    return;
-                default:
-                    this.chat.Print($"Unknown subcommand used. Run {commandName} {helpName} for valid subcommands.");
-                    return;
-            }
+            
+            configuration.min = configMin;
+            configuration.mod = configMod;
+            configuration.delta = configDelta;
+            
+            configuration.alwaysOn = configAlwaysOn;
+            configuration.hq = configHq;
+            configuration.smart = configSmart;
+            configuration.verbose = configVerbose;
+            
+            PluginInterface.SavePluginConfig(configuration);
         }
-
+        
         private bool Retainer()
         {
-            return (this.getFilePtr == null) ? false : Marshal.ReadInt64(this.getFilePtr(7), 0xB0) != 0;
+            return (getFilePtr != null) && Marshal.ReadInt64(getFilePtr(7), 0xB0) != 0;
         }
 
         private void OnNetworkEvent(IntPtr dataPtr, ushort opCode, uint sourceActorId, uint targetActorId, NetworkMessageDirection direction)
         {
             if (direction != NetworkMessageDirection.ZoneDown) return;
-            if (!this.d.IsDataReady) return;
-            if (opCode == this.d.ServerOpCodes["MarketBoardItemRequestStart"]) this.newRequest = true;
-            if (opCode != this.d.ServerOpCodes["MarketBoardOfferings"] || !this.newRequest) return;
-            if (!this.configuration.alwaysOn && (!this.configuration.smart || !this.Retainer())) return;
+            if (!Data.IsDataReady) return;
+            if (opCode == Data.ServerOpCodes["MarketBoardItemRequestStart"]) newRequest = true;
+            if (opCode != Data.ServerOpCodes["MarketBoardOfferings"] || !newRequest) return;
+            if (!configuration.alwaysOn && (!configuration.smart || !Retainer())) return;
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
             var i = 0;
-            if (this.configuration.hq && this.items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
+            if (configuration.hq && items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
             {
                 while (i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) i++;
                 if (i == listing.ItemListings.Count) return;
             }
 
-            var price = listing.ItemListings[i].PricePerUnit - (listing.ItemListings[i].PricePerUnit % this.configuration.mod) - this.configuration.delta;
-            price = Math.Max(price, this.configuration.min);
+            var price = listing.ItemListings[i].PricePerUnit - (listing.ItemListings[i].PricePerUnit % configuration.mod) - configuration.delta;
+            price = Math.Max(price, configuration.min);
             ImGui.SetClipboardText(price.ToString());
-            if (this.configuration.verbose)
+            if (configuration.verbose)
             {
-                this.chat.Print((this.configuration.hq ? "[HQ] " : string.Empty) + $"{price:n0} copied to clipboard.");
+                Chat.Print((configuration.hq ? "[HQ] " : string.Empty) + $"{price:n0} copied to clipboard.");
             }
 
-            this.newRequest = false;
+            newRequest = false;
         }
     }
 }

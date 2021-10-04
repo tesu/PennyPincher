@@ -1,15 +1,11 @@
-﻿namespace PennyPincher
-{
-    using System;
-    using Dalamud.Configuration;
-    using Dalamud.Plugin;
+﻿using System;
+using Dalamud.Configuration;
 
+namespace PennyPincher
+{
     [Serializable]
     public class Configuration : IPluginConfiguration
     {
-        [NonSerialized]
-        private DalamudPluginInterface pluginInterface;
-
         /// <inheritdoc/>
         public int Version { get; set; } = 1;
 
@@ -26,15 +22,5 @@
         public bool smart { get; set; } = true;
 
         public bool verbose { get; set; } = true;
-
-        public void Initialize(DalamudPluginInterface pluginInterface)
-        {
-            this.pluginInterface = pluginInterface;
-        }
-
-        public void Save()
-        {
-            this.pluginInterface.SavePluginConfig(this);
-        }
     }
 }
