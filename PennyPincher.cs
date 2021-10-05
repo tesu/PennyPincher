@@ -30,9 +30,9 @@ namespace PennyPincher
         private int configMin;
         private int configMod;
         private int configDelta;
-        private bool configAlwaysOn;
+
+        private int configMode;
         private bool configHq;
-        private bool configSmart;
         private bool configVerbose;
 
         private bool _config;
@@ -99,24 +99,22 @@ namespace PennyPincher
         {
             if (!_config) return;
             
-            ImGui.SetNextWindowSize(new Num.Vector2(600, 600), ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSize(new Num.Vector2(550, 270), ImGuiCond.FirstUseEver);
             ImGui.Begin($"{Name} Config", ref _config);
             
-            ImGui.InputInt("Delta", ref configDelta);
-            ImGui.TextWrapped("Sets the undercutting amount to be <delta>.");
+            ImGui.InputInt("Amount to undercut by", ref configDelta);
             
-            ImGui.InputInt("Minimum Price", ref configMin);
-            ImGui.TextWrapped("Sets a minimum value to be copied. <min> cannot be below 1.");
+            ImGui.InputInt("Minimum price to copy", ref configMin);
             
-            ImGui.InputInt("Mod", ref configMod);
-            ImGui.TextWrapped("Adjusts base price by subtracting <price> % <mod> from <price> before subtracting <delta>.\nThis makes the last digits of your posted prices consistent.");
+            ImGui.InputInt("Modulo*", ref configMod);
+            ImGui.TextWrapped("*Subtracts an additional [<lowest price> %% <modulo>] from the price (no effect if modulo is 1).\nThis can be used to make the last digits of your copied prices consistent.");
 
             ImGui.Separator();
-            
-            ImGui.Checkbox($"Always On: Toggles whether {Name} is always on (supersedes 'Smart Mode')", ref configAlwaysOn);
-            ImGui.Checkbox($"HQ: Toggles whether {Name} should only undercut HQ items when you're listing an HQ item", ref configHq);
-            ImGui.Checkbox($"Smart Mode: Toggles whether {Name} should automatically copy when you're using a retainer", ref configSmart);
-            ImGui.Checkbox($"Verbose: Toggles whether {Name} prints whenever it copies to clipboard", ref configVerbose);
+
+            string[] modes = { "Never", "Only at Retainer", "Always" };
+            ImGui.Combo("When to copy", ref configMode, modes, modes.Length);
+            ImGui.Checkbox($"When listing an item that can be HQ, only undercut HQ items", ref configHq);
+            ImGui.Checkbox($"Print chat message when prices are copied to clipboard", ref configVerbose);
 
             ImGui.Separator();
             if (ImGui.Button("Save and Close Config"))
@@ -135,9 +133,9 @@ namespace PennyPincher
             configMin = configuration.min;
             configMod = configuration.mod;
 
-            configAlwaysOn = configuration.alwaysOn;
+            configMode = configuration.alwaysOn ? 2 : (configuration.smart ? 1 : 0);
+
             configHq = configuration.hq;
-            configSmart = configuration.smart;
             configVerbose = configuration.verbose;
         }
 
@@ -145,17 +143,24 @@ namespace PennyPincher
         {
             if (configMin < 1)
             {
-                Chat.Print($"{Name}: <min> cannot be lower than 1.");
+                Chat.Print("Minimum price must be positive.");
                 configMin = 1;
+            }
+
+            if (configMod < 1)
+            {
+                Chat.Print("Modulo must be positive.");
+                configMod = 1;
             }
             
             configuration.delta = configDelta;
             configuration.min = configMin;
             configuration.mod = configMod;
 
-            configuration.alwaysOn = configAlwaysOn;
+            configuration.alwaysOn = configMode == 2;
+            configuration.smart = configMode == 1;
+
             configuration.hq = configHq;
-            configuration.smart = configSmart;
             configuration.verbose = configVerbose;
             
             PluginInterface.SavePluginConfig(configuration);
