@@ -30,6 +30,7 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <PackageReference Include="DalamudPackager" Version="2.1.2" />
     <Reference Include="Dalamud">
       <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\Dalamud.dll</HintPath>
       <Private>false</Private>
@@ -47,4 +48,8 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+  <Target Name="PackagePlugin" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <DalamudPackager ProjectDir="$(ProjectDir)" OutputPath="$(OutputPath)" AssemblyName="$(AssemblyName)" MakeZip="true" />
+  </Target>
 </Project>
