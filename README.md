@@ -36,6 +36,7 @@ This both speeds up the process and reduces room for error from typos.
 |`/penny help`|Displays the list of commands.||
 
 ## Changelog
+1.4.0.0: Configuration via UI instead of slash-commands  
 1.3.0.0: `/penny min` added, `/penny hq` behavior reverted to the old dumb behavior, updated to dalamud API v4  
 1.2.0.1: `/penny mod` added, `/penny hq` is back (defaults to true so the smarter behavior is opt-out)  
 1.2.0.0: `/penny hq` has been replaced with smarter behavior (checking if the item you're listing is HQ or not)  
