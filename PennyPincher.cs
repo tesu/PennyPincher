@@ -87,7 +87,16 @@ namespace PennyPincher
         
         private void Command(string command, string arguments)
         {
-            _config = true;
+            if (arguments == "hq")
+            {
+                configHq = !configHq;
+                Chat.Print("Penny Pincher HQ mode " + (configHq ? "enabled." : "disabled."));
+                SaveConfig();
+            }
+            else
+            {
+                _config = true;
+            }
         }
         
         private void OpenConfigUi()
