@@ -8,5 +8,5 @@
     "ImageUrls": [],
     "IconUrl": "https://github.com/tesu/PennyPincher/raw/master/images/icon.png",
     "Changelog": "Brings back /penny hq, by popular demand.",
-    "DalamudApiLevel": 4
+    "DalamudApiLevel": 5
 }
