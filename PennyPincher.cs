@@ -82,7 +82,6 @@ namespace PennyPincher
             PluginInterface.UiBuilder.Draw -= DrawWindow;
             PluginInterface.UiBuilder.OpenConfigUi -= OpenConfigUi;
             CommandManager.RemoveHandler(commandName);
-            PluginInterface.Dispose();
         }
         
         private void Command(string command, string arguments)
