@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Dalamud.Data;
@@ -40,6 +41,7 @@ namespace PennyPincher
         private Lumina.Excel.ExcelSheet<Item> items;
         private bool newRequest;
         private GetFilePointer getFilePtr;
+        private List<MarketBoardCurrentOfferings> _cache = new();
 
         public PennyPincher()
         {
@@ -183,15 +185,30 @@ namespace PennyPincher
         {
             if (direction != NetworkMessageDirection.ZoneDown) return;
             if (!Data.IsDataReady) return;
-            if (opCode == Data.ServerOpCodes["MarketBoardItemRequestStart"]) newRequest = true;
+            if (opCode == Data.ServerOpCodes["MarketBoardItemRequestStart"])
+            {
+                newRequest = true;
+
+                // clear cache on new request so we can verify that we got all the data we need when we inspect the price
+                _cache.Clear();
+            }
             if (opCode != Data.ServerOpCodes["MarketBoardOfferings"] || !newRequest) return;
             if (!configuration.alwaysOn && (!configuration.smart || !Retainer())) return;
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
+
+            // collect data for data integrity
+            _cache.Add(listing);
+
             var i = 0;
             if (configuration.hq && items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
             {
                 while (i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) i++;
                 if (i == listing.ItemListings.Count) return;
+            }
+
+            if (!IsDataValid(listing))
+            {
+                return;
             }
 
             var price = listing.ItemListings[i].PricePerUnit - (listing.ItemListings[i].PricePerUnit % configuration.mod) - configuration.delta;
@@ -203,6 +220,25 @@ namespace PennyPincher
             }
 
             newRequest = false;
+        }
+
+        private bool IsDataValid(MarketBoardCurrentOfferings listing)
+        {
+            // handle early items / if the first request has less than 10
+            if (listing.ListingIndexStart == 0 && listing.ListingIndexEnd == 0)
+            {
+                return true;
+            }
+
+            // handle paged requests. 10 per request
+            var neededItems = listing.ListingIndexStart + listing.ItemListings.Count;
+            var actualItems = _cache.Sum(x => x.ItemListings.Count);
+            if (neededItems == actualItems)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }
