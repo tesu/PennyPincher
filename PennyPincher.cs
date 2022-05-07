@@ -198,17 +198,13 @@ namespace PennyPincher
 
             // collect data for data integrity
             _cache.Add(listing);
+            if (!IsDataValid(listing)) return;
 
             var i = 0;
             if (configuration.hq && items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
             {
                 while (i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) i++;
                 if (i == listing.ItemListings.Count) return;
-            }
-
-            if (!IsDataValid(listing))
-            {
-                return;
             }
 
             var price = listing.ItemListings[i].PricePerUnit - (listing.ItemListings[i].PricePerUnit % configuration.mod) - configuration.delta;
@@ -233,12 +229,7 @@ namespace PennyPincher
             // handle paged requests. 10 per request
             var neededItems = listing.ListingIndexStart + listing.ItemListings.Count;
             var actualItems = _cache.Sum(x => x.ItemListings.Count);
-            if (neededItems == actualItems)
-            {
-                return true;
-            }
-
-            return false;
+            return (neededItems == actualItems);
         }
     }
 }
