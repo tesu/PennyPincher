@@ -32,6 +32,7 @@
   
   <ItemGroup>
     <PackageReference Include="DalamudPackager" Version="2.1.6" />
+    <PackageReference Include="Dalamud.DrunkenToad" Version="1.1.8" />
     <Reference Include="Dalamud">
       <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\Dalamud.dll</HintPath>
       <Private>false</Private>
