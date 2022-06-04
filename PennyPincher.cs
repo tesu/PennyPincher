@@ -42,6 +42,7 @@ namespace PennyPincher
         private Configuration configuration;
         private Lumina.Excel.ExcelSheet<Item> items;
         private bool newRequest;
+        private bool useHq;
         private GetFilePointer getFilePtr;
         private List<MarketBoardCurrentOfferings> _cache = new();
 
@@ -193,6 +194,9 @@ namespace PennyPincher
 
                 // clear cache on new request so we can verify that we got all the data we need when we inspect the price
                 _cache.Clear();
+
+                var shiftHeld = KeyState[(byte)Dalamud.DrunkenToad.ModifierKey.Enum.VkShift];
+                useHq = shiftHeld && configuration.hq;
             }
             if (opCode != Data.ServerOpCodes["MarketBoardOfferings"] || !newRequest) return;
             if (!configuration.alwaysOn && (!configuration.smart || !Retainer())) return;
@@ -202,9 +206,8 @@ namespace PennyPincher
             _cache.Add(listing);
             if (!IsDataValid(listing)) return;
 
-            var shiftHeld = KeyState[(byte)Dalamud.DrunkenToad.ModifierKey.Enum.VkShift];
             var i = 0;
-            if (configuration.hq && shiftHeld && items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
+            if (useHq && items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
             {
                 while (i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) i++;
                 if (i == listing.ItemListings.Count) return;
