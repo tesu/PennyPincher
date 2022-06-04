@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Dalamud.Data;
 using Dalamud.Game;
+using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
 using Dalamud.Game.Network;
@@ -25,7 +26,8 @@ namespace PennyPincher
         [PluginService] public static DataManager Data { get; private set; } = null!;
         [PluginService] public static GameNetwork GameNetwork { get; private set; } = null!;
         [PluginService] public static SigScanner SigScanner { get; private set; } = null!;
-        
+        [PluginService] public static KeyState KeyState { get; private set; } = null!;
+
         private const string commandName = "/penny";
         
         private int configMin;
@@ -123,7 +125,7 @@ namespace PennyPincher
 
             string[] modes = { "Never", "Only at Retainer", "Always" };
             ImGui.Combo("When to copy", ref configMode, modes, modes.Length);
-            ImGui.Checkbox($"When listing an item that can be HQ, only undercut HQ items", ref configHq);
+            ImGui.Checkbox($"Hold Shift while opening market display to undercut HQ items", ref configHq);
             ImGui.Checkbox($"Print chat message when prices are copied to clipboard", ref configVerbose);
 
             ImGui.Separator();
@@ -200,8 +202,9 @@ namespace PennyPincher
             _cache.Add(listing);
             if (!IsDataValid(listing)) return;
 
+            var shiftHeld = KeyState[(byte)Dalamud.DrunkenToad.ModifierKey.Enum.VkShift];
             var i = 0;
-            if (configuration.hq && items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
+            if (configuration.hq && shiftHeld && items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
             {
                 while (i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) i++;
                 if (i == listing.ItemListings.Count) return;
