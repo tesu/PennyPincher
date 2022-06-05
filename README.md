@@ -24,7 +24,7 @@ Therefore, your new workflow becomes this:
 This both speeds up the process and reduces room for error from typos.
 
 ## Changelog
-1.4.1.2: Added back old "copy HQ price without holding Shift" as an option  
+1.4.1.2: Added back old "copy HQ price without holding Shift" mode as an option  
 1.4.1.1: Hotfix for new HQ mode behavior  
 1.4.1.0: New HQ mode behavior: hold Shift when opening marketboard to undercut HQ prices  
 1.4.0.4: Fixed bug where a nonsense price was copied on error  
