@@ -11,9 +11,11 @@ namespace PennyPincher
 
         public bool alwaysOn { get; set; } = false;
 
+        public bool alwaysHq { get; set; } = false;
+
         public int delta { get; set; } = 1;
 
-        public bool hq { get; set; } = false;
+        public bool hq { get; set; } = true;
 
         public int min { get; set; } = 1;
 

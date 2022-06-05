@@ -35,7 +35,7 @@ namespace PennyPincher
         private int configDelta;
 
         private int configMode;
-        private bool configHq;
+        private int configHq;
         private bool configVerbose;
 
         private bool _config;
@@ -93,8 +93,14 @@ namespace PennyPincher
         {
             if (arguments == "hq")
             {
-                configHq = !configHq;
-                Chat.Print("Penny Pincher HQ mode " + (configHq ? "enabled." : "disabled."));
+                if (configHq == 2)
+                {
+                    configHq = 0;
+                } else
+                {
+                    configHq = 2;
+                }
+                Chat.Print("Penny Pincher always HQ mode " + (configHq == 2 ? "enabled." : "disabled."));
                 SaveConfig();
             }
             else
@@ -126,7 +132,8 @@ namespace PennyPincher
 
             string[] modes = { "Never", "Only at Retainer", "Always" };
             ImGui.Combo("When to copy", ref configMode, modes, modes.Length);
-            ImGui.Checkbox($"Hold Shift while opening market display to undercut HQ items", ref configHq);
+            string[] hqModes = { "Never", "Only when holding Shift while opening marketboard", "Always" };
+            ImGui.Combo("When to undercut HQ items", ref configHq, hqModes, hqModes.Length);
             ImGui.Checkbox($"Print chat message when prices are copied to clipboard", ref configVerbose);
 
             ImGui.Separator();
@@ -147,8 +154,8 @@ namespace PennyPincher
             configMod = configuration.mod;
 
             configMode = configuration.alwaysOn ? 2 : (configuration.smart ? 1 : 0);
+            configHq = configuration.alwaysHq ? 2 : (configuration.hq ? 1 : 0);
 
-            configHq = configuration.hq;
             configVerbose = configuration.verbose;
         }
 
@@ -173,7 +180,9 @@ namespace PennyPincher
             configuration.alwaysOn = configMode == 2;
             configuration.smart = configMode == 1;
 
-            configuration.hq = configHq;
+            configuration.alwaysHq = configHq == 2;
+            configuration.hq = configHq == 1;
+
             configuration.verbose = configVerbose;
             
             PluginInterface.SavePluginConfig(configuration);
@@ -196,7 +205,7 @@ namespace PennyPincher
                 _cache.Clear();
 
                 var shiftHeld = KeyState[(byte)Dalamud.DrunkenToad.ModifierKey.Enum.VkShift];
-                useHq = shiftHeld && configuration.hq;
+                useHq = configuration.alwaysHq || (shiftHeld && configuration.hq);
             }
             if (opCode != Data.ServerOpCodes["MarketBoardOfferings"] || !newRequest) return;
             if (!configuration.alwaysOn && (!configuration.smart || !Retainer())) return;
@@ -218,7 +227,7 @@ namespace PennyPincher
             ImGui.SetClipboardText(price.ToString());
             if (configuration.verbose)
             {
-                Chat.Print((configuration.hq ? "[HQ] " : string.Empty) + $"{price:n0} copied to clipboard.");
+                Chat.Print((useHq ? "[HQ] " : string.Empty) + $"{price:n0} copied to clipboard.");
             }
 
             newRequest = false;
