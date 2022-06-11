@@ -35,8 +35,8 @@ namespace PennyPincher
         private int configMultiple;
         private int configDelta;
 
-        private int configMode;
-        private int configHq;
+        private bool configAlwaysOn;
+        private bool configHq;
         private bool configVerbose;
 
         private bool _config;
@@ -49,7 +49,27 @@ namespace PennyPincher
 
         public PennyPincher()
         {
-            configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+            var pluginConfig = PluginInterface.GetPluginConfig();
+            if (pluginConfig is Configuration)
+            {
+                configuration = (Configuration)pluginConfig;
+            }
+            else if (pluginConfig is OldConfiguration)
+            {
+                var oldConfig = (OldConfiguration)pluginConfig;
+                configuration = new Configuration();
+                configuration.alwaysOn = oldConfig.alwaysOn;
+                configuration.delta = oldConfig.delta;
+                configuration.hq = oldConfig.alwaysHq;
+                configuration.min = oldConfig.min;
+                configuration.mod = oldConfig.mod;
+                configuration.multiple = oldConfig.multiple;
+                configuration.verbose = oldConfig.verbose;
+            }
+            else
+            {
+                configuration = new Configuration();
+            }
             LoadConfig();
             
             items = Data.GetExcelSheet<Item>();
@@ -94,14 +114,8 @@ namespace PennyPincher
         {
             if (arguments == "hq")
             {
-                if (configHq == 2)
-                {
-                    configHq = 0;
-                } else
-                {
-                    configHq = 2;
-                }
-                Chat.Print("Penny Pincher always HQ mode " + (configHq == 2 ? "enabled." : "disabled."));
+                configHq = !configHq;
+                Chat.Print("Penny Pincher HQ mode " + (configHq ? "enabled." : "disabled."));
                 SaveConfig();
             }
             else
@@ -129,15 +143,14 @@ namespace PennyPincher
             ImGui.InputInt("Modulo*", ref configMod);
             ImGui.TextWrapped("*Subtracts an additional [<lowest price> %% <modulo>] from the price before applying the delta (no effect if modulo is 1).\nThis can be used to make the last digits of your copied prices consistent.");
 
-            ImGui.InputInt("Multiple*", ref configMultiple);
-            ImGui.TextWrapped("*Subtracts an additional [<lowest price> %% <multiple>] from the price after applying the delta (no effect if multiple is 1).\nThis can be used to undercut by multiples of an amount.");
+            ImGui.InputInt("Multiple†", ref configMultiple);
+            ImGui.TextWrapped("†Subtracts an additional [<lowest price> %% <multiple>] from the price after applying the delta (no effect if multiple is 1).\nThis can be used to undercut by multiples of an amount.");
 
             ImGui.Separator();
 
-            string[] modes = { "Never", "Only at Retainer", "Always" };
-            ImGui.Combo("When to copy", ref configMode, modes, modes.Length);
-            string[] hqModes = { "Never", "Only when holding Shift while opening marketboard", "Always" };
-            ImGui.Combo("When to undercut HQ items", ref configHq, hqModes, hqModes.Length);
+            ImGui.Checkbox($"Copy prices when opening all marketboards (instead of just retainer marketboards)", ref configAlwaysOn);
+            ImGui.Checkbox($"Undercut HQ prices", ref configHq);
+            ImGui.TextWrapped("Note that you can temporarily switch from HQ to NQ or vice versa by holding Shift when opening the marketboard");
             ImGui.Checkbox($"Print chat message when prices are copied to clipboard", ref configVerbose);
 
             ImGui.Separator();
@@ -158,9 +171,8 @@ namespace PennyPincher
             configMod = configuration.mod;
             configMultiple = configuration.multiple;
 
-            configMode = configuration.alwaysOn ? 2 : (configuration.smart ? 1 : 0);
-            configHq = configuration.alwaysHq ? 2 : (configuration.hq ? 1 : 0);
-
+            configAlwaysOn = configuration.alwaysOn;
+            configHq = configuration.hq;
             configVerbose = configuration.verbose;
         }
 
@@ -189,12 +201,8 @@ namespace PennyPincher
             configuration.mod = configMod;
             configuration.multiple = configMultiple;
 
-            configuration.alwaysOn = configMode == 2;
-            configuration.smart = configMode == 1;
-
-            configuration.alwaysHq = configHq == 2;
-            configuration.hq = configHq == 1;
-
+            configuration.alwaysOn = configAlwaysOn;
+            configuration.hq = configHq;
             configuration.verbose = configVerbose;
             
             PluginInterface.SavePluginConfig(configuration);
@@ -217,10 +225,10 @@ namespace PennyPincher
                 _cache.Clear();
 
                 var shiftHeld = KeyState[(byte)Dalamud.DrunkenToad.ModifierKey.Enum.VkShift];
-                useHq = configuration.alwaysHq || (shiftHeld && configuration.hq);
+                useHq = shiftHeld ^ configuration.hq;
             }
             if (opCode != Data.ServerOpCodes["MarketBoardOfferings"] || !newRequest) return;
-            if (!configuration.alwaysOn && (!configuration.smart || !Retainer())) return;
+            if (!configuration.alwaysOn && !Retainer()) return;
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
 
             // collect data for data integrity
