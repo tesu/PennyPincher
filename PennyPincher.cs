@@ -32,6 +32,7 @@ namespace PennyPincher
         
         private int configMin;
         private int configMod;
+        private int configMultiple;
         private int configDelta;
 
         private int configMode;
@@ -126,7 +127,10 @@ namespace PennyPincher
             ImGui.InputInt("Minimum price to copy", ref configMin);
             
             ImGui.InputInt("Modulo*", ref configMod);
-            ImGui.TextWrapped("*Subtracts an additional [<lowest price> %% <modulo>] from the price (no effect if modulo is 1).\nThis can be used to make the last digits of your copied prices consistent.");
+            ImGui.TextWrapped("*Subtracts an additional [<lowest price> %% <modulo>] from the price before applying the delta (no effect if modulo is 1).\nThis can be used to make the last digits of your copied prices consistent.");
+
+            ImGui.InputInt("Multiple*", ref configMultiple);
+            ImGui.TextWrapped("*Subtracts an additional [<lowest price> %% <multiple>] from the price after applying the delta (no effect if multiple is 1).\nThis can be used to undercut by multiples of an amount.");
 
             ImGui.Separator();
 
@@ -152,6 +156,7 @@ namespace PennyPincher
             configDelta = configuration.delta;
             configMin = configuration.min;
             configMod = configuration.mod;
+            configMultiple = configuration.multiple;
 
             configMode = configuration.alwaysOn ? 2 : (configuration.smart ? 1 : 0);
             configHq = configuration.alwaysHq ? 2 : (configuration.hq ? 1 : 0);
@@ -172,10 +177,17 @@ namespace PennyPincher
                 Chat.Print("Modulo must be positive.");
                 configMod = 1;
             }
+
+            if (configMultiple < 1)
+            {
+                Chat.Print("Multiple must be positive.");
+                configMod = 1;
+            }
             
             configuration.delta = configDelta;
             configuration.min = configMin;
             configuration.mod = configMod;
+            configuration.multiple = configMultiple;
 
             configuration.alwaysOn = configMode == 2;
             configuration.smart = configMode == 1;
@@ -223,6 +235,7 @@ namespace PennyPincher
             }
 
             var price = listing.ItemListings[i].PricePerUnit - (listing.ItemListings[i].PricePerUnit % configuration.mod) - configuration.delta;
+            price -= (price % configuration.multiple);
             price = Math.Max(price, configuration.min);
             ImGui.SetClipboardText(price.ToString());
             if (configuration.verbose)

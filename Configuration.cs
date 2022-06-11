@@ -21,6 +21,8 @@ namespace PennyPincher
 
         public int mod { get; set; } = 1;
 
+        public int multiple { get; set; } = 1;
+
         public bool smart { get; set; } = true;
 
         public bool verbose { get; set; } = true;
