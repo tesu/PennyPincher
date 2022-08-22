@@ -56,15 +56,17 @@ namespace PennyPincher
             }
             else if (pluginConfig is OldConfiguration)
             {
-                var oldConfig = (OldConfiguration)pluginConfig;
-                configuration = new Configuration();
-                configuration.alwaysOn = oldConfig.alwaysOn;
-                configuration.delta = oldConfig.delta;
-                configuration.hq = oldConfig.alwaysHq;
-                configuration.min = oldConfig.min;
-                configuration.mod = oldConfig.mod;
-                configuration.multiple = oldConfig.multiple;
-                configuration.verbose = oldConfig.verbose;
+                OldConfiguration oldConfig = (OldConfiguration)pluginConfig;
+                configuration = new Configuration
+                {
+                    alwaysOn = oldConfig.alwaysOn,
+                    delta = oldConfig.delta,
+                    hq = oldConfig.alwaysHq,
+                    min = oldConfig.min,
+                    mod = oldConfig.mod,
+                    multiple = oldConfig.multiple,
+                    verbose = oldConfig.verbose
+                };
             }
             else
             {
