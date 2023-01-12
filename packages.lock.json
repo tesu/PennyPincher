@@ -1,21 +1,21 @@
 {
   "version": 1,
   "dependencies": {
-    "net6.0-windows7.0": {
+    "net7.0-windows7.0": {
       "Dalamud.DrunkenToad": {
         "type": "Direct",
-        "requested": "[1.2.0, )",
-        "resolved": "1.2.0",
-        "contentHash": "tyn7QTX48abk9mcyk4OOGdHCDA0uJl5k76s9r6ntMP4NIKSYLCchpB6o4pa350MpY7t+r0sr68C/YIoZSrWcSg==",
+        "requested": "[1.5.6, )",
+        "resolved": "1.5.6",
+        "contentHash": "AMkUXOWliSg1I6RkmD7tEDxrpRlhnSPF3bmkynDSA4W+Mjf/Ps4+9NiUHhiiplrd+iBgWlRyT7lzs0Zj4NDETA==",
         "dependencies": {
           "LiteDB": "5.0.11"
         }
       },
       "DalamudPackager": {
         "type": "Direct",
-        "requested": "[2.1.8, )",
-        "resolved": "2.1.8",
-        "contentHash": "YqagNXs9InxmqkXzq7kLveImxnodkBEicAhydMXVp7dFjC7xb76U6zGgAax4/BWIWfZeWzr5DJyQSev31kj81A=="
+        "requested": "[2.1.10, )",
+        "resolved": "2.1.10",
+        "contentHash": "S6NrvvOnLgT4GDdgwuKVJjbFo+8ZEj+JsEYk9ojjOR/MMfv1dIFpT8aRJQfI24rtDcw1uF+GnSSMN4WW1yt7fw=="
       },
       "LiteDB": {
         "type": "Transitive",

@@ -7,5 +7,5 @@
     "Tags": [ "marketboard", "undercut", "penny", "clipboard" ],
     "ImageUrls": [],
     "IconUrl": "https://github.com/tesu/PennyPincher/raw/master/images/icon.png",
-    "Changelog": "Added new option to undercut by multiples. Config menu has been cleaned up."
+    "Changelog": "API 8"
 }
