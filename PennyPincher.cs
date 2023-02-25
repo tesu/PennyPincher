@@ -247,17 +247,18 @@ namespace PennyPincher
             var i = 0;
             if (useHq && items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
             {
-                while (i < listing.ItemListings.Count && !listing.ItemListings[i].IsHq) i++;
-                if (i == listing.ItemListings.Count) return;
+                while (i < listing.ItemListings.Count && (!listing.ItemListings[i].IsHq || IsOwnRetainer(listing.ItemListings[i].RetainerId))) i++;
+            }
+            else
+            {
+                while (i < listing.ItemListings.Count && IsOwnRetainer(listing.ItemListings[i].RetainerId)) i++;
             }
 
-            long price = listing.ItemListings[i].PricePerUnit;
-            if (!IsOwnRetainer(listing.ItemListings[i].RetainerId))
-            {
-                price = price - (listing.ItemListings[i].PricePerUnit % configuration.mod) - configuration.delta;
-                price -= (price % configuration.multiple);
-                price = Math.Max(price, configuration.min);
-            }
+            if (i == listing.ItemListings.Count) return;
+
+            var price = listing.ItemListings[i].PricePerUnit - (listing.ItemListings[i].PricePerUnit % configuration.mod) - configuration.delta;
+            price -= (price % configuration.multiple);
+            price = Math.Max(price, configuration.min);
 
             ImGui.SetClipboardText(price.ToString());
             if (configuration.verbose)
