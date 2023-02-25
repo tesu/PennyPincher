@@ -12,6 +12,7 @@ using Dalamud.Game.Network.Structures;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
 using Num = System.Numerics;
@@ -244,9 +245,14 @@ namespace PennyPincher
                 if (i == listing.ItemListings.Count) return;
             }
 
-            var price = listing.ItemListings[i].PricePerUnit - (listing.ItemListings[i].PricePerUnit % configuration.mod) - configuration.delta;
-            price -= (price % configuration.multiple);
-            price = Math.Max(price, configuration.min);
+            long price = listing.ItemListings[i].PricePerUnit;
+            if (!IsOwnRetainer(listing.ItemListings[i].RetainerId))
+            {
+                price = price - (listing.ItemListings[i].PricePerUnit % configuration.mod) - configuration.delta;
+                price -= (price % configuration.multiple);
+                price = Math.Max(price, configuration.min);
+            }
+
             ImGui.SetClipboardText(price.ToString());
             if (configuration.verbose)
             {
@@ -268,6 +274,20 @@ namespace PennyPincher
             var neededItems = listing.ListingIndexStart + listing.ItemListings.Count;
             var actualItems = _cache.Sum(x => x.ItemListings.Count);
             return (neededItems == actualItems);
+        }
+
+        private unsafe bool IsOwnRetainer(ulong retainerId)
+        {
+            var retainerManager = RetainerManager.Instance();
+            for (int i = 0; i < retainerManager->GetRetainerCount(); ++i)
+            {
+                if (retainerId == retainerManager->Retainer[i]->RetainerID)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }
