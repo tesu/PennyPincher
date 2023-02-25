@@ -3,15 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Dalamud.Data;
-using Dalamud.Game;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
 using Dalamud.Game.Network;
 using Dalamud.Game.Network.Structures;
+using Dalamud.Hooking;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
+using Dalamud.Utility.Signatures;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
 using Num = System.Numerics;
@@ -25,7 +27,6 @@ namespace PennyPincher
         [PluginService] public static ChatGui Chat { get; private set; } = null!;
         [PluginService] public static DataManager Data { get; private set; } = null!;
         [PluginService] public static GameNetwork GameNetwork { get; private set; } = null!;
-        [PluginService] public static SigScanner SigScanner { get; private set; } = null!;
         [PluginService] public static KeyState KeyState { get; private set; } = null!;
 
         private const string commandName = "/penny";
@@ -44,7 +45,11 @@ namespace PennyPincher
         private Lumina.Excel.ExcelSheet<Item> items;
         private bool newRequest;
         private bool useHq;
+        private bool itemHq;
+        [Signature("E8 ?? ?? ?? ?? 48 85 C0 74 14 83 7B 44 00")]
         private GetFilePointer getFilePtr;
+        [Signature("48 89 5C 24 ?? 55 56 57 48 83 EC 50 4C 89 64 24", DetourName = nameof(AddonRetainerSell_OnSetup))]
+        private Hook<AddonOnSetup> retainerSellSetup;
         private List<MarketBoardCurrentOfferings> _cache = new();
 
         public PennyPincher()
@@ -89,8 +94,8 @@ namespace PennyPincher
 
             try
             {
-                var ptr = SigScanner.ScanText("E8 ?? ?? ?? ?? 48 85 C0 74 14 83 7B 44 00");
-                getFilePtr = Marshal.GetDelegateForFunctionPointer<GetFilePointer>(ptr);
+                SignatureHelper.Initialise(this);
+                retainerSellSetup.Enable();
             }
             catch (Exception e)
             {
@@ -99,13 +104,14 @@ namespace PennyPincher
             }
         }
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate IntPtr GetFilePointer(byte index);
+        private delegate IntPtr AddonOnSetup(IntPtr addon, uint a2, IntPtr dataPtr);
 
         public string Name => "Penny Pincher";
 
         public void Dispose()
         {
+            retainerSellSetup?.Dispose();
             GameNetwork.NetworkMessage -= OnNetworkEvent;
             PluginInterface.UiBuilder.Draw -= DrawWindow;
             PluginInterface.UiBuilder.OpenConfigUi -= OpenConfigUi;
@@ -227,7 +233,7 @@ namespace PennyPincher
                 _cache.Clear();
 
                 var shiftHeld = KeyState[(byte)Dalamud.DrunkenToad.ModifierKey.Enum.VkShift];
-                useHq = shiftHeld ^ configuration.hq;
+                useHq = shiftHeld ^ (configuration.hq || itemHq);
             }
             if (opCode != Data.ServerOpCodes["MarketBoardOfferings"] || !newRequest) return;
             if (!configuration.alwaysOn && !Retainer()) return;
@@ -254,6 +260,16 @@ namespace PennyPincher
             }
 
             newRequest = false;
+        }
+
+        private unsafe IntPtr AddonRetainerSell_OnSetup(IntPtr addon, uint a2, IntPtr dataPtr)
+        {
+            var result = retainerSellSetup.Original(addon, a2, dataPtr);
+
+            string nodeText = ((AddonRetainerSell*)addon)->ItemName->NodeText.ToString();
+            itemHq = nodeText.Contains('\uE03C');
+
+            return result;
         }
 
         private bool IsDataValid(MarketBoardCurrentOfferings listing)
