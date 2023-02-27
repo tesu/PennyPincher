@@ -39,6 +39,7 @@ namespace PennyPincher
 
         private bool configAlwaysOn;
         private bool configHq;
+        private bool configUndercutSelf;
         private bool configVerbose;
 
         private bool _config;
@@ -71,6 +72,7 @@ namespace PennyPincher
                     min = oldConfig.min,
                     mod = oldConfig.mod,
                     multiple = oldConfig.multiple,
+                    undercutSelf = false,
                     verbose = oldConfig.verbose
                 };
             }
@@ -158,7 +160,8 @@ namespace PennyPincher
             ImGui.Separator();
 
             ImGui.Checkbox($"Copy prices when opening all marketboards (instead of just retainer marketboards)", ref configAlwaysOn);
-            ImGui.Checkbox($"Undercut HQ prices", ref configHq);
+            ImGui.Checkbox($"Undercut your own retainers", ref configUndercutSelf);
+            ImGui.Checkbox($"Undercut HQ prices when listing HQ item", ref configHq);
             ImGui.TextWrapped("Note that you can temporarily switch from HQ to NQ or vice versa by holding Shift when opening the marketboard");
             ImGui.Checkbox($"Print chat message when prices are copied to clipboard", ref configVerbose);
 
@@ -182,6 +185,7 @@ namespace PennyPincher
 
             configAlwaysOn = configuration.alwaysOn;
             configHq = configuration.hq;
+            configUndercutSelf = configuration.undercutSelf;
             configVerbose = configuration.verbose;
         }
 
@@ -212,6 +216,7 @@ namespace PennyPincher
 
             configuration.alwaysOn = configAlwaysOn;
             configuration.hq = configHq;
+            configuration.undercutSelf = configUndercutSelf;
             configuration.verbose = configVerbose;
             
             PluginInterface.SavePluginConfig(configuration);
@@ -234,7 +239,7 @@ namespace PennyPincher
                 _cache.Clear();
 
                 var shiftHeld = KeyState[(byte)Dalamud.DrunkenToad.ModifierKey.Enum.VkShift];
-                useHq = shiftHeld ^ (configuration.hq || itemHq);
+                useHq = shiftHeld ^ (configuration.hq && itemHq);
             }
             if (opCode != Data.ServerOpCodes["MarketBoardOfferings"] || !newRequest) return;
             if (!configuration.alwaysOn && !Retainer()) return;
@@ -247,11 +252,11 @@ namespace PennyPincher
             var i = 0;
             if (useHq && items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
             {
-                while (i < listing.ItemListings.Count && (!listing.ItemListings[i].IsHq || IsOwnRetainer(listing.ItemListings[i].RetainerId))) i++;
+                while (i < listing.ItemListings.Count && (!listing.ItemListings[i].IsHq || (!configuration.undercutSelf && IsOwnRetainer(listing.ItemListings[i].RetainerId)))) i++;
             }
             else
             {
-                while (i < listing.ItemListings.Count && IsOwnRetainer(listing.ItemListings[i].RetainerId)) i++;
+                while (i < listing.ItemListings.Count && (!configuration.undercutSelf && IsOwnRetainer(listing.ItemListings[i].RetainerId))) i++;
             }
 
             if (i == listing.ItemListings.Count) return;

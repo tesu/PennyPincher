@@ -24,6 +24,7 @@ Therefore, your new workflow becomes this:
 This both speeds up the process and reduces room for error from typos.
 
 ## Changelog
+1.6.0.1: Updated config options to enable/disable new behavior  
 1.6.0.0: Automatically undercut HQ when listing HQ items (turn off HQ mode to use) and avoid undercutting your own retainers
 1.5.0.2: .NET 7 update  
 1.5.0.1: .NET 6 update  

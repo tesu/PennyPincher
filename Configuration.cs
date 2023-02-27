@@ -21,6 +21,8 @@ namespace PennyPincher
 
         public int multiple { get; set; } = 1;
 
+        public bool undercutSelf { get; set; } = false;
+
         public bool verbose { get; set; } = true;
     }
 
