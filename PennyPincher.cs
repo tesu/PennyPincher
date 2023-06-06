@@ -6,7 +6,6 @@ using Dalamud.Data;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
-using Dalamud.Game.Network;
 using Dalamud.Game.Network.Structures;
 using Dalamud.Hooking;
 using Dalamud.IoC;
@@ -27,7 +26,6 @@ namespace PennyPincher
         [PluginService] public static CommandManager CommandManager { get; private set; } = null!;
         [PluginService] public static ChatGui Chat { get; private set; } = null!;
         [PluginService] public static DataManager Data { get; private set; } = null!;
-        [PluginService] public static GameNetwork GameNetwork { get; private set; } = null!;
         [PluginService] public static KeyState KeyState { get; private set; } = null!;
 
         private const string commandName = "/penny";
@@ -52,6 +50,16 @@ namespace PennyPincher
         private GetFilePointer getFilePtr;
         [Signature("48 89 5C 24 ?? 55 56 57 48 83 EC 50 4C 89 64 24", DetourName = nameof(AddonRetainerSell_OnSetup))]
         private Hook<AddonOnSetup> retainerSellSetup;
+        private unsafe delegate void* MarketBoardItemRequestStart(int* a1,int* a2,int* a3);
+        private unsafe delegate void* MarketBoardOfferings(int* a1,int* a2,int* a3);
+        
+        //If the signature for these are ever lost, find the ProcessZonePacketDown signature in Dalamud and then find the relevant function based on the opcode.
+        [Signature("48 89 5C 24 ?? 57 48 83 EC 40 48 8B 0D ?? ?? ?? ?? 48 8B DA E8 ?? ?? ?? ?? 48 8B F8", DetourName = nameof(MarketBoardItemRequestStartDetour), UseFlags = SignatureUseFlags.Hook)]
+        private Hook<MarketBoardItemRequestStart> _marketBoardItemRequestStartHook;
+        
+        [Signature("40 53 48 83 EC 20 48 8B 0D ?? ?? ?? ?? 48 8B DA E8 ?? ?? ?? ?? 48 85 C0 74 31 4C 8B 00 48 8B C8 41 FF 90 ?? ?? ?? ?? 48 8B C8 BA ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 85 C0 74 12 4C 8B 00 48 8B D3 48 8B C8 48 83 C4 20 5B 49 FF 60 60 48 83 C4 20 5B C3 CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC 40 53", DetourName = nameof(MarketBoardOfferingsDetour), UseFlags = SignatureUseFlags.Hook)]
+        private Hook<MarketBoardOfferings> _marketBoardOfferingsHook;
+        
         private List<MarketBoardCurrentOfferings> _cache = new();
 
         public PennyPincher()
@@ -93,18 +101,56 @@ namespace PennyPincher
                 HelpMessage = $"Opens the {Name} config menu",
             });
 
-            GameNetwork.NetworkMessage += OnNetworkEvent;
-
             try
             {
                 SignatureHelper.Initialise(this);
+                _marketBoardItemRequestStartHook.Enable();
+                _marketBoardOfferingsHook.Enable();
                 retainerSellSetup.Enable();
             }
             catch (Exception e)
             {
                 getFilePtr = null;
+                _marketBoardItemRequestStartHook = null;
+                _marketBoardOfferingsHook = null;
                 PluginLog.LogError(e.ToString());
             }
+        }
+        
+        private unsafe void* MarketBoardItemRequestStartDetour(int* a1,int* a2,int* a3)
+        {
+            try
+            {
+                if (a3 != null)
+                {
+                    var ptr = (IntPtr)a2;
+                    ParseNetworkEvent(ptr, PennyPincherPacketType.MarketBoardItemRequestStart);
+                }
+            }
+            catch (Exception e)
+            {
+                PluginLog.Error(e, "Market board item request start detour crashed while parsing.");
+            }
+            
+            return _marketBoardItemRequestStartHook!.Original(a1,a2,a3);
+        }
+        
+        private unsafe void* MarketBoardOfferingsDetour(int* a1,int* a2,int* a3)
+        {
+            try
+            {
+                if (a3 != null)
+                {
+                    var ptr = (IntPtr)a2;
+                    ParseNetworkEvent(ptr, PennyPincherPacketType.MarketBoardOfferings);
+                }
+            }
+            catch (Exception e)
+            {
+                PluginLog.Error(e, "Market board offering packet detour crashed while parsing.");
+            }
+
+            return _marketBoardOfferingsHook!.Original(a1,a2,a3);
         }
 
         private delegate IntPtr GetFilePointer(byte index);
@@ -115,7 +161,8 @@ namespace PennyPincher
         public void Dispose()
         {
             retainerSellSetup?.Dispose();
-            GameNetwork.NetworkMessage -= OnNetworkEvent;
+            _marketBoardItemRequestStartHook?.Dispose();
+            _marketBoardOfferingsHook?.Dispose();
             PluginInterface.UiBuilder.Draw -= DrawWindow;
             PluginInterface.UiBuilder.OpenConfigUi -= OpenConfigUi;
             CommandManager.RemoveHandler(commandName);
@@ -227,11 +274,10 @@ namespace PennyPincher
             return (getFilePtr != null) && Marshal.ReadInt64(getFilePtr(7), 0xB0) != 0;
         }
 
-        private void OnNetworkEvent(IntPtr dataPtr, ushort opCode, uint sourceActorId, uint targetActorId, NetworkMessageDirection direction)
+        private void ParseNetworkEvent(IntPtr dataPtr, PennyPincherPacketType packetType)
         {
-            if (direction != NetworkMessageDirection.ZoneDown) return;
             if (!Data.IsDataReady) return;
-            if (opCode == Data.ServerOpCodes["MarketBoardItemRequestStart"])
+            if (packetType == PennyPincherPacketType.MarketBoardItemRequestStart)
             {
                 newRequest = true;
 
@@ -241,7 +287,7 @@ namespace PennyPincher
                 var shiftHeld = KeyState[(byte)Dalamud.DrunkenToad.ModifierKey.Enum.VkShift];
                 useHq = shiftHeld ^ (configuration.hq && itemHq);
             }
-            if (opCode != Data.ServerOpCodes["MarketBoardOfferings"] || !newRequest) return;
+            if (packetType != PennyPincherPacketType.MarketBoardOfferings || !newRequest) return;
             if (!configuration.alwaysOn && !Retainer()) return;
             var listing = MarketBoardCurrentOfferings.Read(dataPtr);
 
@@ -311,5 +357,11 @@ namespace PennyPincher
 
             return false;
         }
+    }
+
+    enum PennyPincherPacketType
+    {
+        MarketBoardItemRequestStart,
+        MarketBoardOfferings
     }
 }
