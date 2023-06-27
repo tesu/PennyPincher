@@ -14,6 +14,7 @@ using Dalamud.Plugin;
 using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
 using Num = System.Numerics;
@@ -27,6 +28,7 @@ namespace PennyPincher
         [PluginService] public static ChatGui Chat { get; private set; } = null!;
         [PluginService] public static DataManager Data { get; private set; } = null!;
         [PluginService] public static KeyState KeyState { get; private set; } = null!;
+        [PluginService] public static GameGui GameGui { get; private set; } = null!;
 
         private const string commandName = "/penny";
         
@@ -51,13 +53,12 @@ namespace PennyPincher
         [Signature("48 89 5C 24 ?? 55 56 57 48 83 EC 50 4C 89 64 24", DetourName = nameof(AddonRetainerSell_OnSetup))]
         private Hook<AddonOnSetup> retainerSellSetup;
         private unsafe delegate void* MarketBoardItemRequestStart(int* a1,int* a2,int* a3);
-        private unsafe delegate void* MarketBoardOfferings(int* a1,int* a2,int* a3);
+        private unsafe delegate void* MarketBoardOfferings(InfoProxy11* a1, nint packetData);
         
         //If the signature for these are ever lost, find the ProcessZonePacketDown signature in Dalamud and then find the relevant function based on the opcode.
         [Signature("48 89 5C 24 ?? 57 48 83 EC 40 48 8B 0D ?? ?? ?? ?? 48 8B DA E8 ?? ?? ?? ?? 48 8B F8", DetourName = nameof(MarketBoardItemRequestStartDetour), UseFlags = SignatureUseFlags.Hook)]
         private Hook<MarketBoardItemRequestStart> _marketBoardItemRequestStartHook;
         
-        [Signature("40 53 48 83 EC 20 48 8B 0D ?? ?? ?? ?? 48 8B DA E8 ?? ?? ?? ?? 48 85 C0 74 31 4C 8B 00 48 8B C8 41 FF 90 ?? ?? ?? ?? 48 8B C8 BA ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 85 C0 74 12 4C 8B 00 48 8B D3 48 8B C8 48 83 C4 20 5B 49 FF 60 60 48 83 C4 20 5B C3 CC CC CC CC CC CC CC CC CC CC CC CC CC CC CC 40 53", DetourName = nameof(MarketBoardOfferingsDetour), UseFlags = SignatureUseFlags.Hook)]
         private Hook<MarketBoardOfferings> _marketBoardOfferingsHook;
         
         private List<MarketBoardCurrentOfferings> _cache = new();
@@ -103,10 +104,18 @@ namespace PennyPincher
 
             try
             {
-                SignatureHelper.Initialise(this);
-                _marketBoardItemRequestStartHook.Enable();
-                _marketBoardOfferingsHook.Enable();
-                retainerSellSetup.Enable();
+                unsafe
+                {
+                    SignatureHelper.Initialise(this);
+                    _marketBoardItemRequestStartHook.Enable();
+                
+                    var uiModule   = (UIModule*)GameGui.GetUIModule();
+                    var infoModule = uiModule->GetInfoModule();
+                    var proxy      = infoModule->GetInfoProxyById(11);
+                    _marketBoardOfferingsHook = Hook<MarketBoardOfferings>.FromAddress((nint)proxy->vtbl[12], MarketBoardOfferingsDetour);
+                    _marketBoardOfferingsHook.Enable();
+                    retainerSellSetup.Enable();
+                }
             }
             catch (Exception e)
             {
@@ -135,14 +144,13 @@ namespace PennyPincher
             return _marketBoardItemRequestStartHook!.Original(a1,a2,a3);
         }
         
-        private unsafe void* MarketBoardOfferingsDetour(int* a1,int* a2,int* a3)
+        private unsafe void* MarketBoardOfferingsDetour(InfoProxy11* a1, nint packetData)
         {
             try
             {
-                if (a3 != null)
+                if (packetData != nint.Zero)
                 {
-                    var ptr = (IntPtr)a2;
-                    ParseNetworkEvent(ptr, PennyPincherPacketType.MarketBoardOfferings);
+                    ParseNetworkEvent(packetData, PennyPincherPacketType.MarketBoardOfferings);
                 }
             }
             catch (Exception e)
@@ -150,7 +158,7 @@ namespace PennyPincher
                 PluginLog.Error(e, "Market board offering packet detour crashed while parsing.");
             }
 
-            return _marketBoardOfferingsHook!.Original(a1,a2,a3);
+            return _marketBoardOfferingsHook!.Original(a1,packetData);
         }
 
         private delegate IntPtr GetFilePointer(byte index);
