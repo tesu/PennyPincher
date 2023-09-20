@@ -292,7 +292,7 @@ namespace PennyPincher
                 // clear cache on new request so we can verify that we got all the data we need when we inspect the price
                 _cache.Clear();
 
-                var shiftHeld = KeyState[(byte)Dalamud.DrunkenToad.ModifierKey.Enum.VkShift];
+                var shiftHeld = KeyState[VirtualKey.SHIFT];
                 useHq = shiftHeld ^ (configuration.hq && itemHq);
             }
             if (packetType != PennyPincherPacketType.MarketBoardOfferings || !newRequest) return;
