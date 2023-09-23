@@ -37,7 +37,6 @@
 
   <ItemGroup>
     <PackageReference Include="DalamudPackager" Version="2.1.10" />
-    <PackageReference Include="Dalamud.DrunkenToad" Version="1.5.6" />
     <Reference Include="Dalamud">
       <HintPath>$(DalamudLibPath)Dalamud.dll</HintPath>
       <Private>false</Private>
