@@ -11,6 +11,7 @@ using Dalamud.Hooking;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
@@ -24,11 +25,13 @@ namespace PennyPincher
     public class PennyPincher : IDalamudPlugin
     {
         [PluginService] public static DalamudPluginInterface PluginInterface { get; private set; } = null!;
-        [PluginService] public static CommandManager CommandManager { get; private set; } = null!;
-        [PluginService] public static ChatGui Chat { get; private set; } = null!;
-        [PluginService] public static DataManager Data { get; private set; } = null!;
-        [PluginService] public static KeyState KeyState { get; private set; } = null!;
-        [PluginService] public static GameGui GameGui { get; private set; } = null!;
+        [PluginService] public static ICommandManager CommandManager { get; private set; } = null!;
+        [PluginService] public static IChatGui Chat { get; private set; } = null!;
+        [PluginService] public static IDataManager Data { get; private set; } = null!;
+        [PluginService] public static IKeyState KeyState { get; private set; } = null!;
+        [PluginService] public static IGameGui GameGui { get; private set; } = null!;
+        [PluginService] public static IPluginLog Log { get; private set; } = null!;
+        [PluginService] public static IGameInteropProvider GameInteropProvider { get; private set; } = null!;
 
         private const string commandName = "/penny";
         
@@ -53,7 +56,7 @@ namespace PennyPincher
         [Signature("48 89 5C 24 ?? 55 56 57 48 83 EC 50 4C 89 64 24", DetourName = nameof(AddonRetainerSell_OnSetup))]
         private Hook<AddonOnSetup> retainerSellSetup;
         private unsafe delegate void* MarketBoardItemRequestStart(int* a1,int* a2,int* a3);
-        private unsafe delegate void* MarketBoardOfferings(InfoProxy11* a1, nint packetData);
+        private unsafe delegate void* MarketBoardOfferings(InfoProxyItemSearch* a1, nint packetData);
         
         //If the signature for these are ever lost, find the ProcessZonePacketDown signature in Dalamud and then find the relevant function based on the opcode.
         [Signature("48 89 5C 24 ?? 57 48 83 EC 40 48 8B 0D ?? ?? ?? ?? 48 8B DA E8 ?? ?? ?? ?? 48 8B F8", DetourName = nameof(MarketBoardItemRequestStartDetour), UseFlags = SignatureUseFlags.Hook)]
@@ -106,13 +109,13 @@ namespace PennyPincher
             {
                 unsafe
                 {
-                    SignatureHelper.Initialise(this);
+                    GameInteropProvider.InitializeFromAttributes(this);
                     _marketBoardItemRequestStartHook.Enable();
                 
                     var uiModule   = (UIModule*)GameGui.GetUIModule();
                     var infoModule = uiModule->GetInfoModule();
                     var proxy      = infoModule->GetInfoProxyById(11);
-                    _marketBoardOfferingsHook = Hook<MarketBoardOfferings>.FromAddress((nint)proxy->vtbl[12], MarketBoardOfferingsDetour);
+                    _marketBoardOfferingsHook = GameInteropProvider.HookFromAddress<MarketBoardOfferings>((nint)proxy->vtbl[12], MarketBoardOfferingsDetour);
                     _marketBoardOfferingsHook.Enable();
                     retainerSellSetup.Enable();
                 }
@@ -122,7 +125,7 @@ namespace PennyPincher
                 getFilePtr = null;
                 _marketBoardItemRequestStartHook = null;
                 _marketBoardOfferingsHook = null;
-                PluginLog.LogError(e.ToString());
+                Log.Error(e.ToString());
             }
         }
         
@@ -138,13 +141,13 @@ namespace PennyPincher
             }
             catch (Exception e)
             {
-                PluginLog.Error(e, "Market board item request start detour crashed while parsing.");
+                Log.Error(e, "Market board item request start detour crashed while parsing.");
             }
             
             return _marketBoardItemRequestStartHook!.Original(a1,a2,a3);
         }
         
-        private unsafe void* MarketBoardOfferingsDetour(InfoProxy11* a1, nint packetData)
+        private unsafe void* MarketBoardOfferingsDetour(InfoProxyItemSearch* a1, nint packetData)
         {
             try
             {
@@ -155,7 +158,7 @@ namespace PennyPincher
             }
             catch (Exception e)
             {
-                PluginLog.Error(e, "Market board offering packet detour crashed while parsing.");
+                Log.Error(e, "Market board offering packet detour crashed while parsing.");
             }
 
             return _marketBoardOfferingsHook!.Original(a1,packetData);
@@ -284,7 +287,7 @@ namespace PennyPincher
 
         private void ParseNetworkEvent(IntPtr dataPtr, PennyPincherPacketType packetType)
         {
-            if (!Data.IsDataReady) return;
+            // if (!Data.IsDataReady) return;
             if (packetType == PennyPincherPacketType.MarketBoardItemRequestStart)
             {
                 newRequest = true;
@@ -355,9 +358,9 @@ namespace PennyPincher
         private unsafe bool IsOwnRetainer(ulong retainerId)
         {
             var retainerManager = RetainerManager.Instance();
-            for (int i = 0; i < retainerManager->GetRetainerCount(); ++i)
+            for (uint i = 0; i < retainerManager->GetRetainerCount(); ++i)
             {
-                if (retainerId == retainerManager->Retainer[i]->RetainerID)
+                if (retainerId == retainerManager->GetRetainerBySortedIndex(i)->RetainerID)
                 {
                     return true;
                 }
