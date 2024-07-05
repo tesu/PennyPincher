@@ -24,7 +24,7 @@ namespace PennyPincher
 {
     public class PennyPincher : IDalamudPlugin
     {
-        [PluginService] public static DalamudPluginInterface PluginInterface { get; private set; } = null!;
+        [PluginService] public static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
         [PluginService] public static ICommandManager CommandManager { get; private set; } = null!;
         [PluginService] public static IChatGui Chat { get; private set; } = null!;
         [PluginService] public static IDataManager Data { get; private set; } = null!;
@@ -32,6 +32,7 @@ namespace PennyPincher
         [PluginService] public static IGameGui GameGui { get; private set; } = null!;
         [PluginService] public static IPluginLog Log { get; private set; } = null!;
         [PluginService] public static IGameInteropProvider GameInteropProvider { get; private set; } = null!;
+        [PluginService] public static IMarketBoard MarketBoard { get; private set; } = null!;
 
         private const string commandName = "/penny";
         
@@ -53,18 +54,15 @@ namespace PennyPincher
         private bool itemHq;
         [Signature("E8 ?? ?? ?? ?? 48 85 C0 74 14 83 7B 44 00")]
         private GetFilePointer getFilePtr;
-        [Signature("48 89 5C 24 ?? 55 56 57 48 83 EC 50 4C 89 64 24", DetourName = nameof(AddonRetainerSell_OnSetup))]
+        [Signature("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 4C 89 74 24 ?? 49 8B F0 44 8B F2", DetourName = nameof(AddonRetainerSell_OnSetup))]
         private Hook<AddonOnSetup> retainerSellSetup;
         private unsafe delegate void* MarketBoardItemRequestStart(int* a1,int* a2,int* a3);
-        private unsafe delegate void* MarketBoardOfferings(InfoProxyItemSearch* a1, nint packetData);
-        
+
         //If the signature for these are ever lost, find the ProcessZonePacketDown signature in Dalamud and then find the relevant function based on the opcode.
-        [Signature("48 89 5C 24 ?? 57 48 83 EC 40 48 8B 0D ?? ?? ?? ?? 48 8B DA E8 ?? ?? ?? ?? 48 8B F8", DetourName = nameof(MarketBoardItemRequestStartDetour), UseFlags = SignatureUseFlags.Hook)]
+        [Signature("48 89 5C 24 ?? 57 48 83 EC 20 48 8B 0D ?? ?? ?? ?? 48 8B FA E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 74 4A", DetourName = nameof(MarketBoardItemRequestStartDetour), UseFlags = SignatureUseFlags.Hook)]
         private Hook<MarketBoardItemRequestStart> _marketBoardItemRequestStartHook;
-        
-        private Hook<MarketBoardOfferings> _marketBoardOfferingsHook;
-        
-        private List<MarketBoardCurrentOfferings> _cache = new();
+
+        private List<IMarketBoardCurrentOfferings> _cache = new();
 
         public PennyPincher()
         {
@@ -93,7 +91,8 @@ namespace PennyPincher
                 configuration = new Configuration();
             }
             LoadConfig();
-            
+
+            MarketBoard.OfferingsReceived += MarketBoardOnOfferingsReceived;
             items = Data.GetExcelSheet<Item>();
             newRequest = false;
 
@@ -111,12 +110,10 @@ namespace PennyPincher
                 {
                     GameInteropProvider.InitializeFromAttributes(this);
                     _marketBoardItemRequestStartHook.Enable();
-                
-                    var uiModule   = (UIModule*)GameGui.GetUIModule();
+
+                    var uiModule = (UIModule*)GameGui.GetUIModule();
                     var infoModule = uiModule->GetInfoModule();
-                    var proxy      = infoModule->GetInfoProxyById(11);
-                    _marketBoardOfferingsHook = GameInteropProvider.HookFromAddress<MarketBoardOfferings>((nint)proxy->vtbl[12], MarketBoardOfferingsDetour);
-                    _marketBoardOfferingsHook.Enable();
+                    var proxy = infoModule->GetInfoProxyById((InfoProxyId)11);
                     retainerSellSetup.Enable();
                 }
             }
@@ -124,11 +121,68 @@ namespace PennyPincher
             {
                 getFilePtr = null;
                 _marketBoardItemRequestStartHook = null;
-                _marketBoardOfferingsHook = null;
                 Log.Error(e.ToString());
             }
         }
-        
+
+        private void MarketBoardOnOfferingsReceived(IMarketBoardCurrentOfferings currentOfferings)
+        {
+            if (!newRequest) return;
+
+            if (!configuration.alwaysOn && !Retainer()) return;
+
+            // collect data for data integrity
+            _cache.Add(currentOfferings);
+
+            var i = 0;
+            if (useHq && items.Single(j => j.RowId == currentOfferings.ItemListings[0].ItemId).CanBeHq)
+            {
+                while (i < currentOfferings.ItemListings.Count && (!currentOfferings.ItemListings[i].IsHq || (!configuration.undercutSelf && IsOwnRetainer(currentOfferings.ItemListings[i].RetainerId)))) i++;
+            }
+            else
+            {
+                while (i < currentOfferings.ItemListings.Count && (!configuration.undercutSelf && IsOwnRetainer(currentOfferings.ItemListings[i].RetainerId))) i++;
+            }
+
+            if (i == currentOfferings.ItemListings.Count) return;
+
+            var price = currentOfferings.ItemListings[i].PricePerUnit - (currentOfferings.ItemListings[i].PricePerUnit % configuration.mod) - configuration.delta;
+            price -= (price % configuration.multiple);
+            price = Math.Max(price, configuration.min);
+
+            ImGui.SetClipboardText(price.ToString());
+            if (configuration.verbose)
+            {
+                Chat.Print((useHq ? "[HQ] " : string.Empty) + $"{price:n0} copied to clipboard.");
+            }
+
+            newRequest = false;
+        }
+
+        private void ParseNetworkEvent(IntPtr dataPtr, PennyPincherPacketType packetType)
+        {
+            // if (!Data.IsDataReady) return;
+            if (packetType == PennyPincherPacketType.MarketBoardItemRequestStart)
+            {
+                newRequest = true;
+
+                // clear cache on new request so we can verify that we got all the data we need when we inspect the price
+                _cache.Clear();
+
+                var shiftHeld = KeyState[VirtualKey.SHIFT];
+                useHq = shiftHeld ^ (configuration.hq && itemHq);
+            }
+        }
+
+        public void Dispose()
+        {
+            MarketBoard.OfferingsReceived -= MarketBoardOnOfferingsReceived;
+            retainerSellSetup?.Dispose();
+            PluginInterface.UiBuilder.Draw -= DrawWindow;
+            PluginInterface.UiBuilder.OpenConfigUi -= OpenConfigUi;
+            CommandManager.RemoveHandler(commandName);
+        }
+
         private unsafe void* MarketBoardItemRequestStartDetour(int* a1,int* a2,int* a3)
         {
             try
@@ -146,38 +200,11 @@ namespace PennyPincher
             
             return _marketBoardItemRequestStartHook!.Original(a1,a2,a3);
         }
-        
-        private unsafe void* MarketBoardOfferingsDetour(InfoProxyItemSearch* a1, nint packetData)
-        {
-            try
-            {
-                if (packetData != nint.Zero)
-                {
-                    ParseNetworkEvent(packetData, PennyPincherPacketType.MarketBoardOfferings);
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Market board offering packet detour crashed while parsing.");
-            }
-
-            return _marketBoardOfferingsHook!.Original(a1,packetData);
-        }
 
         private delegate IntPtr GetFilePointer(byte index);
         private delegate IntPtr AddonOnSetup(IntPtr addon, uint a2, IntPtr dataPtr);
 
         public string Name => "Penny Pincher";
-
-        public void Dispose()
-        {
-            retainerSellSetup?.Dispose();
-            _marketBoardItemRequestStartHook?.Dispose();
-            _marketBoardOfferingsHook?.Dispose();
-            PluginInterface.UiBuilder.Draw -= DrawWindow;
-            PluginInterface.UiBuilder.OpenConfigUi -= OpenConfigUi;
-            CommandManager.RemoveHandler(commandName);
-        }
         
         private void Command(string command, string arguments)
         {
@@ -285,52 +312,6 @@ namespace PennyPincher
             return (getFilePtr != null) && Marshal.ReadInt64(getFilePtr(7), 0xB0) != 0;
         }
 
-        private void ParseNetworkEvent(IntPtr dataPtr, PennyPincherPacketType packetType)
-        {
-            // if (!Data.IsDataReady) return;
-            if (packetType == PennyPincherPacketType.MarketBoardItemRequestStart)
-            {
-                newRequest = true;
-
-                // clear cache on new request so we can verify that we got all the data we need when we inspect the price
-                _cache.Clear();
-
-                var shiftHeld = KeyState[VirtualKey.SHIFT];
-                useHq = shiftHeld ^ (configuration.hq && itemHq);
-            }
-            if (packetType != PennyPincherPacketType.MarketBoardOfferings || !newRequest) return;
-            if (!configuration.alwaysOn && !Retainer()) return;
-            var listing = MarketBoardCurrentOfferings.Read(dataPtr);
-
-            // collect data for data integrity
-            _cache.Add(listing);
-            if (!IsDataValid(listing)) return;
-
-            var i = 0;
-            if (useHq && items.Single(j => j.RowId == listing.ItemListings[0].CatalogId).CanBeHq)
-            {
-                while (i < listing.ItemListings.Count && (!listing.ItemListings[i].IsHq || (!configuration.undercutSelf && IsOwnRetainer(listing.ItemListings[i].RetainerId)))) i++;
-            }
-            else
-            {
-                while (i < listing.ItemListings.Count && (!configuration.undercutSelf && IsOwnRetainer(listing.ItemListings[i].RetainerId))) i++;
-            }
-
-            if (i == listing.ItemListings.Count) return;
-
-            var price = listing.ItemListings[i].PricePerUnit - (listing.ItemListings[i].PricePerUnit % configuration.mod) - configuration.delta;
-            price -= (price % configuration.multiple);
-            price = Math.Max(price, configuration.min);
-
-            ImGui.SetClipboardText(price.ToString());
-            if (configuration.verbose)
-            {
-                Chat.Print((useHq ? "[HQ] " : string.Empty) + $"{price:n0} copied to clipboard.");
-            }
-
-            newRequest = false;
-        }
-
         private unsafe IntPtr AddonRetainerSell_OnSetup(IntPtr addon, uint a2, IntPtr dataPtr)
         {
             var result = retainerSellSetup.Original(addon, a2, dataPtr);
@@ -341,26 +322,12 @@ namespace PennyPincher
             return result;
         }
 
-        private bool IsDataValid(MarketBoardCurrentOfferings listing)
-        {
-            // handle early items / if the first request has less than 10
-            if (listing.ListingIndexStart == 0 && listing.ListingIndexEnd == 0)
-            {
-                return true;
-            }
-
-            // handle paged requests. 10 per request
-            var neededItems = listing.ListingIndexStart + listing.ItemListings.Count;
-            var actualItems = _cache.Sum(x => x.ItemListings.Count);
-            return (neededItems == actualItems);
-        }
-
         private unsafe bool IsOwnRetainer(ulong retainerId)
         {
             var retainerManager = RetainerManager.Instance();
             for (uint i = 0; i < retainerManager->GetRetainerCount(); ++i)
             {
-                if (retainerId == retainerManager->GetRetainerBySortedIndex(i)->RetainerID)
+                if (retainerId == retainerManager->GetRetainerBySortedIndex(i)->RetainerId)
                 {
                     return true;
                 }
