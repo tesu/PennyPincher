@@ -6,6 +6,7 @@
     "RepoUrl": "https://github.com/tesu/PennyPincher",
     "Tags": [ "marketboard", "undercut", "penny", "clipboard" ],
     "ImageUrls": [],
+    "DalamudApiLevel": 10,
     "IconUrl": "https://github.com/tesu/PennyPincher/raw/master/images/icon.png",
     "Changelog": "API version bump"
 }
