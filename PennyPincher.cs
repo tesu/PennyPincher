@@ -62,8 +62,6 @@ namespace PennyPincher
         [Signature("48 89 5C 24 ?? 57 48 83 EC 20 48 8B 0D ?? ?? ?? ?? 48 8B FA E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 74 4A", DetourName = nameof(MarketBoardItemRequestStartDetour), UseFlags = SignatureUseFlags.Hook)]
         private Hook<MarketBoardItemRequestStart> _marketBoardItemRequestStartHook;
 
-        private List<IMarketBoardCurrentOfferings> _cache = new();
-
         public PennyPincher()
         {
             var pluginConfig = PluginInterface.GetPluginConfig();
@@ -131,8 +129,6 @@ namespace PennyPincher
 
             if (!configuration.alwaysOn && !Retainer()) return;
 
-            // collect data for data integrity
-            _cache.Add(currentOfferings);
 
             var i = 0;
             if (useHq && items.Single(j => j.RowId == currentOfferings.ItemListings[0].ItemId).CanBeHq)
@@ -166,8 +162,6 @@ namespace PennyPincher
             {
                 newRequest = true;
 
-                // clear cache on new request so we can verify that we got all the data we need when we inspect the price
-                _cache.Clear();
 
                 var shiftHeld = KeyState[VirtualKey.SHIFT];
                 useHq = shiftHeld ^ (configuration.hq && itemHq);
