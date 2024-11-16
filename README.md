@@ -1,5 +1,5 @@
 # Penny Pincher
-![Downloads Badge](https://img.shields.io/endpoint?url=https%3A%2F%2Fvz32sgcoal.execute-api.us-east-1.amazonaws.com%2FPennyPincher)
+[![Download count](https://img.shields.io/endpoint?url=https://qzysathwfhebdai6xgauhz4q7m0mzmrf.lambda-url.us-east-1.on.aws/PennyPincher)](https://github.com/tesu/PennyPincher)
 
 XIVLauncher plugin for simplifying "pennying" (undercutting current lowest offer by 1).
 
