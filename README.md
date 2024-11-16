@@ -24,6 +24,7 @@ Therefore, your new workflow becomes this:
 This both speeds up the process and reduces room for error from typos.
 
 ## Changelog
+1.8.0.1: API version bump  
 1.8.0.0: API version bump  
 1.7.0.1: API version bump  
 1.7.0.0: Use hooks instead of opcodes  

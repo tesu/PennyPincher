@@ -1,15 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
-using Dalamud.Data;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Command;
-using Dalamud.Game.Gui;
 using Dalamud.Game.Network.Structures;
 using Dalamud.Hooking;
 using Dalamud.IoC;
-using Dalamud.Logging;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility.Signatures;
@@ -17,7 +13,7 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using ImGuiNET;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using Num = System.Numerics;
 
 namespace PennyPincher
@@ -53,14 +49,14 @@ namespace PennyPincher
         private bool useHq;
         private bool itemHq;
         [Signature("E8 ?? ?? ?? ?? 48 85 C0 74 14 83 7B 44 00")]
-        private GetFilePointer getFilePtr;
+        private GetFilePointer? getFilePtr;
         [Signature("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 4C 89 74 24 ?? 49 8B F0 44 8B F2", DetourName = nameof(AddonRetainerSell_OnSetup))]
-        private Hook<AddonOnSetup> retainerSellSetup;
+        private Hook<AddonOnSetup>? retainerSellSetup;
         private unsafe delegate void* MarketBoardItemRequestStart(int* a1,int* a2,int* a3);
 
         //If the signature for these are ever lost, find the ProcessZonePacketDown signature in Dalamud and then find the relevant function based on the opcode.
         [Signature("48 89 5C 24 ?? 57 48 83 EC 20 48 8B 0D ?? ?? ?? ?? 48 8B FA E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 74 4A", DetourName = nameof(MarketBoardItemRequestStartDetour), UseFlags = SignatureUseFlags.Hook)]
-        private Hook<MarketBoardItemRequestStart> _marketBoardItemRequestStartHook;
+        private Hook<MarketBoardItemRequestStart>? _marketBoardItemRequestStartHook;
 
         public PennyPincher()
         {
@@ -107,18 +103,19 @@ namespace PennyPincher
                 unsafe
                 {
                     GameInteropProvider.InitializeFromAttributes(this);
-                    _marketBoardItemRequestStartHook.Enable();
+                    _marketBoardItemRequestStartHook!.Enable();
 
                     var uiModule = (UIModule*)GameGui.GetUIModule();
                     var infoModule = uiModule->GetInfoModule();
                     var proxy = infoModule->GetInfoProxyById((InfoProxyId)11);
-                    retainerSellSetup.Enable();
+                    retainerSellSetup!.Enable();
                 }
             }
             catch (Exception e)
             {
                 getFilePtr = null;
                 _marketBoardItemRequestStartHook = null;
+                retainerSellSetup = null;
                 Log.Error(e.ToString());
             }
         }
@@ -308,7 +305,7 @@ namespace PennyPincher
 
         private unsafe IntPtr AddonRetainerSell_OnSetup(IntPtr addon, uint a2, IntPtr dataPtr)
         {
-            var result = retainerSellSetup.Original(addon, a2, dataPtr);
+            var result = retainerSellSetup!.Original(addon, a2, dataPtr);
 
             string nodeText = ((AddonRetainerSell*)addon)->ItemName->NodeText.ToString();
             itemHq = nodeText.Contains('\uE03C');
