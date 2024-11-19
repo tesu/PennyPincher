@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Runtime.InteropServices;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Command;
 using Dalamud.Game.Network.Structures;
@@ -12,6 +11,7 @@ using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using ImGuiNET;
 using Lumina.Excel.Sheets;
 using Num = System.Numerics;
@@ -298,9 +298,10 @@ namespace PennyPincher
             PluginInterface.SavePluginConfig(configuration);
         }
         
-        private bool Retainer()
+        private unsafe bool Retainer()
         {
-            return (getFilePtr != null) && Marshal.ReadInt64(getFilePtr(7), 0xB0) != 0;
+            var r = ItemOrderModule.Instance();
+            return r->ActiveRetainerId != 0;
         }
 
         private unsafe IntPtr AddonRetainerSell_OnSetup(IntPtr addon, uint a2, IntPtr dataPtr)
