@@ -48,8 +48,6 @@ namespace PennyPincher
         private bool newRequest;
         private bool useHq;
         private bool itemHq;
-        [Signature("E8 ?? ?? ?? ?? 48 85 C0 74 14 83 7B 44 00")]
-        private GetFilePointer? getFilePtr;
         [Signature("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 4C 89 74 24 ?? 49 8B F0 44 8B F2", DetourName = nameof(AddonRetainerSell_OnSetup))]
         private Hook<AddonOnSetup>? retainerSellSetup;
         private unsafe delegate void* MarketBoardItemRequestStart(int* a1,int* a2,int* a3);
@@ -113,7 +111,6 @@ namespace PennyPincher
             }
             catch (Exception e)
             {
-                getFilePtr = null;
                 _marketBoardItemRequestStartHook = null;
                 retainerSellSetup = null;
                 Log.Error(e.ToString());
@@ -154,7 +151,6 @@ namespace PennyPincher
 
         private void ParseNetworkEvent(IntPtr dataPtr, PennyPincherPacketType packetType)
         {
-            // if (!Data.IsDataReady) return;
             if (packetType == PennyPincherPacketType.MarketBoardItemRequestStart)
             {
                 newRequest = true;
@@ -192,7 +188,6 @@ namespace PennyPincher
             return _marketBoardItemRequestStartHook!.Original(a1,a2,a3);
         }
 
-        private delegate IntPtr GetFilePointer(byte index);
         private delegate IntPtr AddonOnSetup(IntPtr addon, uint a2, IntPtr dataPtr);
 
         public string Name => "Penny Pincher";
