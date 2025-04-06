@@ -24,6 +24,8 @@ Therefore, your new workflow becomes this:
 This both speeds up the process and reduces room for error from typos.
 
 ## Changelog
+1.8.0.5: Refactored logic to avoid network packet processing bug  
+1.8.0.4: API version bump  
 1.8.0.3: Minor bugfixes and code cleanup  
 1.8.0.2: Fix retainer detection bug  
 1.8.0.1: API version bump  

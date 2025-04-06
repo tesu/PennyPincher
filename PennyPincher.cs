@@ -1,7 +1,8 @@
-﻿using Dalamud.Game.Addon.Lifecycle;
-using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using Dalamud.Game.Addon.Lifecycle;
+using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Command;
 using Dalamud.Game.Network.Structures;
@@ -46,6 +47,7 @@ namespace PennyPincher
         private Configuration configuration;
         private Lumina.Excel.ExcelSheet<Item> items;
         private bool newRequest;
+        private int lastRequestId;
         private bool useHq;
         private bool itemHq;
 
@@ -59,6 +61,7 @@ namespace PennyPincher
             MarketBoard.OfferingsReceived += MarketBoardOnOfferingsReceived;
             items = Data.GetExcelSheet<Item>();
             newRequest = false;
+            lastRequestId = -1;
 
             PluginInterface.UiBuilder.Draw += DrawWindow;
             PluginInterface.UiBuilder.OpenConfigUi += OpenConfigUi;
@@ -86,6 +89,8 @@ namespace PennyPincher
                 else break;
             }
             if (i >= currentOfferings.ItemListings.Count) return;
+            if (currentOfferings.RequestId == lastRequestId) return; // This can happen when the "Please wait and try your search again." error comes up
+            lastRequestId = currentOfferings.RequestId;
 
             var price = currentOfferings.ItemListings[i].PricePerUnit - (currentOfferings.ItemListings[i].PricePerUnit % configuration.mod) - configuration.delta;
             price -= (price % configuration.multiple);
@@ -235,11 +240,5 @@ namespace PennyPincher
             }
             return false;
         }
-    }
-
-    enum PennyPincherPacketType
-    {
-        MarketBoardItemRequestStart,
-        MarketBoardOfferings
     }
 }
