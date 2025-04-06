@@ -1,13 +1,13 @@
-﻿using System;
+﻿using Dalamud.Game.Addon.Lifecycle;
+using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
+using System;
 using System.Linq;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Command;
 using Dalamud.Game.Network.Structures;
-using Dalamud.Hooking;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
@@ -28,6 +28,7 @@ namespace PennyPincher
         [PluginService] public static IPluginLog Log { get; private set; } = null!;
         [PluginService] public static IGameInteropProvider GameInteropProvider { get; private set; } = null!;
         [PluginService] public static IMarketBoard MarketBoard { get; private set; } = null!;
+        [PluginService] public static IAddonLifecycle AddonLifecycle { get; private set; } = null!;
 
         private const string commandName = "/penny";
         
@@ -47,13 +48,6 @@ namespace PennyPincher
         private bool newRequest;
         private bool useHq;
         private bool itemHq;
-        [Signature("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC ?? 4C 89 74 24 ?? 49 8B F0 44 8B F2", DetourName = nameof(AddonRetainerSell_OnSetup))]
-        private Hook<AddonOnSetup>? retainerSellSetup;
-        private unsafe delegate void* MarketBoardItemRequestStart(int* a1,int* a2,int* a3);
-
-        //If the signature for these are ever lost, find the ProcessZonePacketDown signature in Dalamud and then find the relevant function based on the opcode.
-        [Signature("48 89 5C 24 ?? 57 48 83 EC 20 48 8B 0D ?? ?? ?? ?? 48 8B FA E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 74 4A", DetourName = nameof(MarketBoardItemRequestStartDetour), UseFlags = SignatureUseFlags.Hook)]
-        private Hook<MarketBoardItemRequestStart>? marketBoardItemRequestStart;
 
         public PennyPincher()
         {
@@ -69,26 +63,13 @@ namespace PennyPincher
             PluginInterface.UiBuilder.Draw += DrawWindow;
             PluginInterface.UiBuilder.OpenConfigUi += OpenConfigUi;
 
+            AddonLifecycle.RegisterListener(AddonEvent.PostSetup, "RetainerSell", AddonRetainerSellPostSetup);
+            AddonLifecycle.RegisterListener(AddonEvent.PostSetup, "ItemSearchResult", ItemSearchResultPostSetup);
+
             CommandManager.AddHandler(commandName, new CommandInfo(Command)
             {
                 HelpMessage = $"Opens the {Name} config menu",
             });
-
-            try
-            {
-                unsafe
-                {
-                    GameInteropProvider.InitializeFromAttributes(this);
-                    marketBoardItemRequestStart!.Enable();
-                    retainerSellSetup!.Enable();
-                }
-            }
-            catch (Exception e)
-            {
-                marketBoardItemRequestStart = null;
-                retainerSellSetup = null;
-                Log.Error(e.ToString());
-            }
         }
 
         private void MarketBoardOnOfferingsReceived(IMarketBoardCurrentOfferings currentOfferings)
@@ -116,44 +97,21 @@ namespace PennyPincher
             newRequest = false;
         }
 
-        private void ParseNetworkEvent(IntPtr dataPtr, PennyPincherPacketType packetType)
+        private void ItemSearchResultPostSetup(AddonEvent type, AddonArgs args)
         {
-            if (packetType == PennyPincherPacketType.MarketBoardItemRequestStart)
-            {
-                newRequest = true;
-                useHq = KeyState[VirtualKey.SHIFT] ^ (configuration.hq && itemHq);
-            }
+            newRequest = true;
+            useHq = KeyState[VirtualKey.SHIFT] ^ (configuration.hq && itemHq);
         }
 
         public void Dispose()
         {
             MarketBoard.OfferingsReceived -= MarketBoardOnOfferingsReceived;
-            marketBoardItemRequestStart?.Dispose();
-            retainerSellSetup?.Dispose();
             PluginInterface.UiBuilder.Draw -= DrawWindow;
             PluginInterface.UiBuilder.OpenConfigUi -= OpenConfigUi;
             CommandManager.RemoveHandler(commandName);
+            AddonLifecycle.UnregisterListener(AddonEvent.PostSetup, "RetainerSell", AddonRetainerSellPostSetup);
+            AddonLifecycle.UnregisterListener(AddonEvent.PostSetup, "ItemSearchResult", ItemSearchResultPostSetup);
         }
-
-        private unsafe void* MarketBoardItemRequestStartDetour(int* a1,int* a2,int* a3)
-        {
-            try
-            {
-                if (a3 != null)
-                {
-                    var ptr = (IntPtr)a2;
-                    ParseNetworkEvent(ptr, PennyPincherPacketType.MarketBoardItemRequestStart);
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Market board item request start detour crashed while parsing.");
-            }
-            
-            return marketBoardItemRequestStart!.Original(a1, a2, a3);
-        }
-
-        private delegate IntPtr AddonOnSetup(IntPtr addon, uint a2, IntPtr dataPtr);
 
         public string Name => "Penny Pincher";
         
@@ -262,14 +220,10 @@ namespace PennyPincher
             return ItemOrderModule.Instance()->ActiveRetainerId != 0;
         }
 
-        private unsafe IntPtr AddonRetainerSell_OnSetup(IntPtr addon, uint a2, IntPtr dataPtr)
+        private unsafe void AddonRetainerSellPostSetup(AddonEvent type, AddonArgs args)
         {
-            var result = retainerSellSetup!.Original(addon, a2, dataPtr);
-
-            string nodeText = ((AddonRetainerSell*)addon)->ItemName->NodeText.ToString();
+            string nodeText = ((AddonRetainerSell*)args.Addon)->ItemName->NodeText.ToString();
             itemHq = nodeText.Contains('\uE03C');
-
-            return result;
         }
 
         private unsafe bool IsOwnRetainer(ulong retainerId)
