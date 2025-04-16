@@ -154,7 +154,7 @@ namespace PennyPincher
             ImGui.TextWrapped("*Subtracts an additional [<lowest price> %% <modulo>] from the price BEFORE applying the delta (no effect if modulo is 1).\nThis can be used to make the last digits of your copied prices consistent.");
 
             ImGui.InputInt("Multiple†", ref configMultiple);
-            ImGui.TextWrapped("†Subtracts an additional [<lowest price> %% <multiple>] from the price AFTER applying the delta (no effect if multiple is 1).\nThis can be used to undercut by multiples of an amount.");
+            ImGui.TextWrapped("†Subtracts an additional [<lowest price> %% <multiple>] from the price AFTER applying the delta (no effect if multiple is 1).\nThis can be used to undercut to a multiple of an amount.");
 
             ImGui.Separator();
 
