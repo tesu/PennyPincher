@@ -12,7 +12,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Lumina.Excel.Sheets;
 using Num = System.Numerics;
 
@@ -227,7 +227,7 @@ namespace PennyPincher
 
         private unsafe void AddonRetainerSellPostSetup(AddonEvent type, AddonArgs args)
         {
-            string nodeText = ((AddonRetainerSell*)args.Addon)->ItemName->NodeText.ToString();
+            string nodeText = ((AddonRetainerSell*)args.Addon.Address)->ItemName->NodeText.ToString();
             itemHq = nodeText.Contains('\uE03C');
         }
 
